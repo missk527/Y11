@@ -1,108 +1,98 @@
-import random
-import json
-
-categories = [
-    "Cell biology",
-    "Organisation",
-    "Infection and response",
-    "Bioenergetics",
-    "Homeostasis and response",
-    "Inheritance, variation and evolution",
-    "Ecology",
-    "Key ideas"
-]
-
-questions = []
-for cat in categories:
-    for i in range(1, 126):  # 每類125題
-        q = f"{cat} Q{i}: Explain concept {i} in {cat.lower()}."
-        a = f"Answer {i} for {cat}."
-        questions.append({"q": q, "a": a, "cat": cat})
-
-random.shuffle(questions)
-
-questions_js = "const questions = " + json.dumps(questions, ensure_ascii=False, indent=2) + ";"
-
-html = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Biology Q&A Flashcards</title>
 <style>
-body {{ font-family: Arial, sans-serif; background: #f4f4f9; margin: 20px; }}
-h1 {{ text-align: center; }}
-#controls {{ margin: 10px; text-align: center; }}
-.flashcard {{
+body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 20px; }
+h1 { text-align: center; }
+#controls { margin: 10px; text-align: center; }
+.flashcard {
   width: 300px; height: 180px; perspective: 1000px;
   margin: 10px auto; display: none;
-}}
-.inner {{
+}
+.inner {
   position: relative; width: 100%; height: 100%;
   transition: transform 0.6s; transform-style: preserve-3d;
   cursor: pointer;
-}}
-.flashcard.show .inner {{ transform: rotateY(180deg); }}
-.front, .back {{
+}
+.flashcard.show .inner { transform: rotateY(180deg); }
+.front, .back {
   position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
   display: flex; justify-content: center; align-items: center;
   border: 2px solid #444; border-radius: 12px; padding: 10px;
-}}
-.front {{ background: #fff; }}
-.back {{ background: #cce5ff; transform: rotateY(180deg); }}
+}
+.front { background: #fff; }
+.back { background: #cce5ff; transform: rotateY(180deg); }
 </style>
 </head>
 <body>
-<h1>Biology Flashcards (1000 questions)</h1>
+<h1>Biology Flashcards (Exam-style Questions)</h1>
 <div id="controls">
   <label>Filter by category: </label>
   <select id="categoryFilter">
     <option value="all">All</option>
-    {''.join([f'<option value="{c}">{c}</option>' for c in categories])}
+    <option value="Cell biology">Cell biology</option>
+    <option value="Organisation">Organisation</option>
+    <option value="Infection and response">Infection and response</option>
+    <option value="Bioenergetics">Bioenergetics</option>
+    <option value="Homeostasis and response">Homeostasis and response</option>
+    <option value="Inheritance, variation and evolution">Inheritance, variation and evolution</option>
+    <option value="Ecology">Ecology</option>
+    <option value="Key ideas">Key ideas</option>
   </select>
   <button onclick="shuffle()">Shuffle</button>
 </div>
 <div id="cards"></div>
 
 <script>
-{questions_js}
+const questions = [
+  // ====================
+  // Cell biology (示範 3 題)
+  // ====================
+  {q: "Cell biology Q1: What is the function of mitochondria?", a: "Mitochondria release energy through aerobic respiration.", cat: "Cell biology"},
+  {q: "Cell biology Q2: Explain how ribosomes are involved in protein synthesis.", a: "Ribosomes assemble amino acids into proteins based on mRNA instructions.", cat: "Cell biology"},
+  {q: "Cell biology Q3: Compare prokaryotic and eukaryotic cells.", a: "Prokaryotes lack a nucleus, eukaryotes have membrane-bound organelles.", cat: "Cell biology"},
 
-function renderCards() {{
+  // ====================
+  // Organisation (示範 3 題)
+  // ====================
+  {q: "Organisation Q1: Which organ pumps blood through the circulatory system?", a: "The heart.", cat: "Organisation"},
+  {q: "Organisation Q2: Explain how the digestive system breaks down carbohydrates.", a: "Amylase enzymes convert starch into sugars.", cat: "Organisation"},
+  {q: "Organisation Q3: What is the role of alveoli in the lungs?", a: "They provide a large surface area for gas exchange.", cat: "Organisation"},
+];
+  
+function renderCards() {
   const container = document.getElementById("cards");
   container.innerHTML = "";
   const filter = document.getElementById("categoryFilter").value;
-  questions.forEach(item => {{
-    if(filter==="all" || item.cat===filter){{
+  questions.forEach(item => {
+    if(filter==="all" || item.cat===filter){
       const card = document.createElement("div");
       card.className="flashcard";
       card.innerHTML = `
         <div class="inner">
-          <div class="front">${{item.q}}</div>
-          <div class="back">${{item.a}}</div>
+          <div class="front">${item.q}</div>
+          <div class="back">${item.a}</div>
         </div>`;
       card.onclick = ()=> card.classList.toggle("show");
       container.appendChild(card);
       card.style.display="block";
-    }}
-  }});
-}}
+    }
+  });
+}
 
-function shuffle() {{
-  for (let i = questions.length - 1; i > 0; i--) {{
+function shuffle() {
+  for (let i = questions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [questions[i], questions[j]] = [questions[j], questions[i]];
-  }}
+  }
   renderCards();
-}}
+}
 
 document.getElementById("categoryFilter").onchange = renderCards;
 renderCards();
 </script>
 </body>
 </html>
-"""
 
-with open("biology_flashcards.html", "w", encoding="utf-8") as f:
-    f.write(html)
-
-print("✅ 已生成 biology_flashcards.html，打開即可使用！")
