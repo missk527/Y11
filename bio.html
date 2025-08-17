@@ -42,8 +42,14 @@ h1 { text-align: center; }
     <option value="Ecology">Ecology</option>
     <option value="Key ideas">Key ideas</option>
   </select>
-  <button onclick="shuffle()">Shuffle</button>
+  <button id="prevBtn">Prev</button>
+  <button id="flipBtn">Flip</button>
+  <button id="nextBtn">Next</button>
+  <button id="shuffleBtn">Shuffle</button>
+  <span id="counter" style="margin-left:8px;"></span>
 </div>
+<div id="cards"></div>
+
 <div id="cards"></div>
 
 <script>
@@ -427,36 +433,126 @@ const questions = [
   // 後面我會照這樣繼續寫「Infection and response」「Bioenergetics」「Homeostasis」「Inheritance」「Ecology」「Key ideas」各 20 題
 ];
   
-function renderCards() {
-  const container = document.getElementById("cards");
-  container.innerHTML = "";
-  const filter = document.getElementById("categoryFilter").value;
-  questions.forEach(item => {
-    if(filter==="all" || item.cat===filter){
-      const card = document.createElement("div");
-      card.className="flashcard";
-      card.innerHTML = `
-        <div class="inner">
-          <div class="front">${item.q}</div>
-          <div class="back">${item.a}</div>
-        </div>`;
-      card.onclick = ()=> card.classList.toggle("show");
-      container.appendChild(card);
-      card.style.display="block";
-    }
-  });
-}
 
-function shuffle() {
-  for (let i = questions.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [questions[i], questions[j]] = [questions[j], questions[i]];
+
+const cardsContainer = document.getElementById("cards");
+const filterSelect   = document.getElementById("categoryFilter");
+const prevBtn        = document.getElementById("prevBtn");
+const nextBtn        = document.getElementById("nextBtn");
+const flipBtn        = document.getElementById("flipBtn");
+const shuffleBtn     = document.getElementById("shuffleBtn");
+const counterEl      = document.getElementById("counter");
+
+// 單張模式狀態
+let filtered = [...questions];
+let index = 0;
+let isFlipped = false;
+
+// 建立單一卡片節點（固定只會存在 1 張）
+function ensureSingleCard() {
+  if (!cardsContainer.firstChild) {
+    const card = document.createElement("div");
+    card.className = "flashcard";
+    card.style.display = "block"; // 單張永遠顯示
+    card.innerHTML = `
+      <div class="inner" id="cardInner">
+        <div class="front" id="cardFront"></div>
+        <div class="back"  id="cardBack"></div>
+      </div>`;
+    // 點擊卡片也可翻面
+    card.onclick = () => toggleFlip();
+    cardsContainer.appendChild(card);
   }
-  renderCards();
 }
 
-document.getElementById("categoryFilter").onchange = renderCards;
-renderCards();
+function updateCounter() {
+  if (filtered.length === 0) {
+    counterEl.textContent = "0 / 0";
+  } else {
+    counterEl.textContent = (index + 1) + " / " + filtered.length;
+  }
+}
+
+function renderCurrent() {
+  ensureSingleCard();
+  const inner = document.getElementById("cardInner");
+  const front = document.getElementById("cardFront");
+  const back  = document.getElementById("cardBack");
+
+  if (filtered.length === 0) {
+    front.textContent = "No questions in this category.";
+    back.textContent  = "Try another filter.";
+    inner.classList.remove("show");
+    isFlipped = false;
+    updateCounter();
+    return;
+  }
+
+  const item = filtered[index];
+  front.textContent = item.q;
+  back.textContent  = item.a;
+
+  // 顯示正面
+  inner.classList.remove("show");
+  isFlipped = false;
+
+  updateCounter();
+}
+
+function applyFilter() {
+  const val = filterSelect.value;
+  filtered = (val === "all") ? [...questions] : questions.filter(x => x.cat === val);
+  index = 0;
+  renderCurrent();
+}
+
+function nextCard() {
+  if (filtered.length === 0) return;
+  index = (index + 1) % filtered.length;
+  renderCurrent();
+}
+
+function prevCard() {
+  if (filtered.length === 0) return;
+  index = (index - 1 + filtered.length) % filtered.length;
+  renderCurrent();
+}
+
+function toggleFlip() {
+  const inner = document.getElementById("cardInner");
+  isFlipped = !isFlipped;
+  inner.classList.toggle("show", isFlipped);
+}
+
+function shuffleCurrent() {
+  // 洗牌目前的 filtered 陣列
+  for (let i = filtered.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+  }
+  index = 0;
+  renderCurrent();
+}
+
+// 事件綁定
+filterSelect.addEventListener("change", applyFilter);
+nextBtn.addEventListener("click", nextCard);
+prevBtn.addEventListener("click", prevCard);
+flipBtn.addEventListener("click", toggleFlip);
+shuffleBtn.addEventListener("click", shuffleCurrent);
+
+// 鍵盤快捷鍵：← → 前後；空白鍵翻面；S 洗牌
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowRight") nextCard();
+  else if (e.key === "ArrowLeft") prevCard();
+  else if (e.key === " ") { e.preventDefault(); toggleFlip(); }
+  else if (e.key.toLowerCase() === "s") shuffleCurrent();
+});
+
+// 初始化
+applyFilter();
 </script>
+
 </body>
 </html>
