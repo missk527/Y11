@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biology Flashcards</title>
+  <style>
+body {
+  font-family: Arial,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  text-align:center;
+  margin:20px;
+  background:linear-gradient(135deg,#f0f9f5,#e6f7ff,#ffffff);
+  color:#222;
+}
+#cards{min-height:260px}
+.flashcard{width:340px;max-width:92vw;height:220px;margin:16px auto;perspective:1000px;cursor:pointer;background:transparent}
+.inner{width:100%;height:100%;transition:transform .6s;transform-style:preserve-3d;position:relative}
+.inner.show{transform:rotateY(180deg)}
+.front,.back{
+  position:absolute;width:100%;height:100%;backface-visibility:hidden;
+  display:flex;justify-content:center;align-items:center;
+  border:2px solid #55aa88;border-radius:12px;padding:14px;text-align:center;font-size:18px;
+  box-shadow:0 0 12px rgba(0,0,0,0.15), inset 0 0 4px rgba(0,0,0,0.05);
+  color:#222; background:#fdfdfd; overflow-wrap:anywhere;
+}
+.front{}
+.back{transform:rotateY(180deg)}
+h1{color:#228855;text-shadow:0 0 6px rgba(34,136,85,0.3)}
+#controls{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-bottom:12px}
+button,select,label{background:#ffffff;border:1px solid #55aa88;color:#222;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all .3s ease}
+button:hover,select:hover{background:#e6f7ee;box-shadow:0 0 6px #55aa88}
+  </style>
+</head>
+<body>
+<h1>Biology Flashcards</h1>
+<div id="controls">
+  <label for="categoryFilter">Filter by category: </label>
+  <select id="categoryFilter" aria-label="Category filter">
+    <option value="all" selected>All</option>
+    <option value="Cell biology">Cell biology</option>
+    <option value="Organisation">Organisation</option>
+    <option value="Infection and response">Infection and response</option>
+    <option value="Bioenergetics">Bioenergetics</option>
+    <option value="Homeostasis and response">Homeostasis and response</option>
+    <option value="Inheritance, variation and evolution">Inheritance, variation and evolution</option>
+    <option value="Ecology">Ecology</option>
+    <option value="Key ideas">Key ideas</option>
+  </select>
+  <button id="prevBtn" type="button">Prev</button>
+  <button id="flipBtn" type="button">Flip</button>
+  <button id="nextBtn" type="button">Next</button>
+  <button id="shuffleBtn" type="button">Shuffle</button>
+  <span id="counter" style="margin-left:8px;"></span>
+</div>
+<div id="cards"></div>
+<script>
+var questions=[
+  {q:"Cell biology Q1: What is the function of mitochondria?",a:"Mitochondria release energy by aerobic respiration.",cat:"Cell biology"},
+  {q:"Cell biology Q2: What is the role of ribosomes?",a:"They assemble amino acids into polypeptides.",cat:"Cell biology"},
+  {q:"Organisation Q1: Which organ pumps blood?",a:"The heart.",cat:"Organisation"},
+  {q:"Organisation Q2: What enzyme breaks down starch?",a:"Amylase.",cat:"Organisation"},
+  {q:"Infection and response Q1: What are pathogens?",a:"Microorganisms that cause disease.",cat:"Infection and response"},
+  {q:"Infection and response Q2: How do viruses make us ill?",a:"They invade and destroy host cells.",cat:"Infection and response"},
+  {q:"Bioenergetics Q1: What is photosynthesis?",a:"Plants use light to convert CO₂ and H₂O to glucose and O₂.",cat:"Bioenergetics"},
+  {q:"Bioenergetics Q2: Where does photosynthesis take place?",a:"In chloroplasts.",cat:"Bioenergetics"},
+  {q:"Ecology Q1: What is a habitat?",a:"The natural environment where an organism lives.",cat:"Ecology"},
+  {q:"Ecology Q2: What is biodiversity?",a:"The variety of living organisms in an ecosystem.",cat:"Ecology"}
+];
+var cardsContainer=document.getElementById("cards");
+var filterSelect=document.getElementById("categoryFilter");
+var prevBtn=document.getElementById("prevBtn");
+var nextBtn=document.getElementById("nextBtn");
+var flipBtn=document.getElementById("flipBtn");
+var shuffleBtn=document.getElementById("shuffleBtn");
+var counterEl=document.getElementById("counter");
+var filtered=questions.slice();
+var index=0;
+var isFlipped=false;
+function ensureSingleCard(){
+  if(!cardsContainer.firstChild){
+    var card=document.createElement("div");
+    card.className="flashcard";
+    card.innerHTML='<div class="inner" id="cardInner">\
+        <div class="front" id="cardFront"></div>\
+        <div class="back" id="cardBack"></div>\
+      </div>';
+    card.addEventListener("click",function(e){
+      var tag=e.target && e.target.tagName ? e.target.tagName : "";
+      if(tag==="BUTTON"||tag==="SELECT") return;
+      toggleFlip();
+    });
+    cardsContainer.appendChild(card);
+  }
+}
+function updateCounter(){counterEl.textContent=filtered.length?(index+1)+" / "+filtered.length:"0 / 0";}
+function renderCurrent(){
+  ensureSingleCard();
+  var inner=document.getElementById("cardInner");
+  var front=document.getElementById("cardFront");
+  var back=document.getElementById("cardBack");
+  if(!filtered.length){front.textContent="No questions.";back.textContent="Try another filter.";inner.classList.remove("show");isFlipped=false;updateCounter();return;}
+  var item=filtered[index];front.textContent=item.q;back.textContent=item.a;inner.classList.remove("show");isFlipped=false;updateCounter();
+}
+function applyFilter(){var v=filterSelect.value;if(v==="all"){filtered=questions.slice();}else{filtered=questions.filter(function(x){return x.cat===v;});}index=0;renderCurrent();}
+function nextCard(){if(filtered.length){index=(index+1)%filtered.length;renderCurrent();}}
+function prevCard(){if(filtered.length){index=(index-1+filtered.length)%filtered.length;renderCurrent();}}
+function toggleFlip(){var inner=document.getElementById("cardInner");isFlipped=!isFlipped;if(inner){if(isFlipped)inner.classList.add("show");else inner.classList.remove("show");}}
+function shuffleCurrent(){for(var i=filtered.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=filtered[i];filtered[i]=filtered[j];filtered[j]=tmp;}index=0;renderCurrent();}
+filterSelect.addEventListener("change",applyFilter);
+prevBtn.addEventListener("click",function(e){e.stopPropagation();prevCard();});
+nextBtn.addEventListener("click",function(e){e.stopPropagation();nextCard();});
+flipBtn.addEventListener("click",function(e){e.stopPropagation();toggleFlip();});
+shuffleBtn.addEventListener("click",function(e){e.stopPropagation();shuffleCurrent();});
+document.addEventListener("keydown",function(e){var tag=e.target&&e.target.tagName?e.target.tagName:"";if(tag==="INPUT"||tag==="TEXTAREA")return;if(e.key==="ArrowRight")nextCard();else if(e.key==="ArrowLeft")prevCard();else if(e.key===" "){e.preventDefault();toggleFlip();}else if((e.key||"").toLowerCase()==="s")shuffleCurrent();});
+applyFilter();
+</script>
+</body>
+</html>
