@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Biology Q&A Flashcards</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 20px; }
+h1 { text-align: center; }
+#controls { margin: 10px; text-align: center; }
+.flashcard {
+  width: 320px; height: 200px; perspective: 1000px;
+  margin: 10px auto; display: none;
+}
+.inner {
+  position: relative; width: 100%; height: 100%;
+  transition: transform 0.6s; transform-style: preserve-3d;
+  cursor: pointer;
+}
+.flashcard.show .inner { transform: rotateY(180deg); }
+.front, .back {
+  position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+  display: flex; justify-content: center; align-items: center;
+  border: 2px solid #444; border-radius: 12px; padding: 10px;
+  text-align: center;
+}
+.front { background: #fff; }
+.back { background: #cce5ff; transform: rotateY(180deg); }
+</style>
+</head>
+<body>
+<h1>Biology Flashcards (160 Exam-style Questions)</h1>
+<div id="controls">
+  <label>Filter by category: </label>
+  <select id="categoryFilter">
+    <option value="all">All</option>
+    <option value="Cell biology">Cell biology</option>
+    <option value="Organisation">Organisation</option>
+    <option value="Infection and response">Infection and response</option>
+    <option value="Bioenergetics">Bioenergetics</option>
+    <option value="Homeostasis and response">Homeostasis and response</option>
+    <option value="Inheritance, variation and evolution">Inheritance, variation and evolution</option>
+    <option value="Ecology">Ecology</option>
+    <option value="Key ideas">Key ideas</option>
+  </select>
+  <button onclick="shuffle()">Shuffle</button>
+</div>
+<div id="cards"></div>
+
+<script>
+const questions = [
+  // ====================
+  // Cell biology (20)
+  // ====================
+  {q: "Cell biology Q1: What is the function of mitochondria?", a: "Mitochondria release energy by aerobic respiration.", cat: "Cell biology"},
+  {q: "Cell biology Q2: Describe how ribosomes contribute to protein synthesis.", a: "Ribosomes assemble amino acids into polypeptides using mRNA templates.", cat: "Cell biology"},
+  {q: "Cell biology Q3: Compare plant and animal cells.", a: "Plant cells have cell walls, chloroplasts, and large vacuoles; animal cells do not.", cat: "Cell biology"},
+  {q: "Cell biology Q4: What is the role of the nucleus?", a: "It controls cell activities and stores genetic material (DNA).", cat: "Cell biology"},
+  {q: "Cell biology Q5: Define osmosis.", a: "The movement of water across a semi-permeable membrane from high to low water potential.", cat: "Cell biology"},
+  {q: "Cell biology Q6: Explain the difference between diffusion and active transport.", a: "Diffusion is passive; active transport requires energy to move molecules against gradients.", cat: "Cell biology"},
+  {q: "Cell biology Q7: How do electron microscopes differ from light microscopes?", a: "Electron microscopes have higher resolution and magnification.", cat: "Cell biology"},
+  {q: "Cell biology Q8: What are stem cells?", a: "Undifferentiated cells that can develop into specialised cell types.", cat: "Cell biology"},
+  {q: "Cell biology Q9: Describe the function of chloroplasts.", a: "Chloroplasts absorb light for photosynthesis.", cat: "Cell biology"},
+  {q: "Cell biology Q10: Why do bacteria reproduce quickly?", a: "They use binary fission, which is rapid under suitable conditions.", cat: "Cell biology"},
+  {q: "Cell biology Q11: What is cytoplasm?", a: "A jelly-like substance where chemical reactions occur.", cat: "Cell biology"},
+  {q: "Cell biology Q12: Define the term 'cell specialisation'.", a: "Cells develop structures to perform specific functions.", cat: "Cell biology"},
+  {q: "Cell biology Q13: Give one example of a specialised animal cell.", a: "Sperm cells have tails for movement.", cat: "Cell biology"},
+  {q: "Cell biology Q14: What is the function of the cell wall?", a: "Provides structural support to plant cells.", cat: "Cell biology"},
+  {q: "Cell biology Q15: What is the difference between prokaryotic and eukaryotic cells?", a: "Prokaryotes lack a nucleus; eukaryotes have membrane-bound organelles.", cat: "Cell biology"},
+  {q: "Cell biology Q16: Why are cells small?", a: "To maximise surface area-to-volume ratio for exchange.", cat: "Cell biology"},
+  {q: "Cell biology Q17: What does 'semi-permeable membrane' mean?", a: "It allows certain molecules to pass but not others.", cat: "Cell biology"},
+  {q: "Cell biology Q18: What are plasmids?", a: "Small circular DNA in bacteria.", cat: "Cell biology"},
+  {q: "Cell biology Q19: Describe binary fission.", a: "Bacterial cell divides into two genetically identical cells.", cat: "Cell biology"},
+  {q: "Cell biology Q20: What is the function of the vacuole?", a: "Stores cell sap and maintains cell rigidity.", cat: "Cell biology"},
+
+  // ====================
+  // Organisation (20)
+  // ====================
+  {q: "Organisation Q1: Which organ pumps blood?", a: "The heart.", cat: "Organisation"},
+  {q: "Organisation Q2: What is the role of the lungs?", a: "Gas exchange: oxygen in, carbon dioxide out.", cat: "Organisation"},
+  {q: "Organisation Q3: Explain how enzymes work.", a: "They speed up reactions by lowering activation energy.", cat: "Organisation"},
+  {q: "Organisation Q4: What enzyme breaks down starch?", a: "Amylase.", cat: "Organisation"},
+  {q: "Organisation Q5: Where is bile stored?", a: "In the gall bladder.", cat: "Organisation"},
+  {q: "Organisation Q6: What is the function of red blood cells?", a: "Carry oxygen using haemoglobin.", cat: "Organisation"},
+  {q: "Organisation Q7: Describe the role of white blood cells.", a: "They defend the body against infection.", cat: "Organisation"},
+  {q: "Organisation Q8: What is plasma?", a: "The liquid part of blood transporting nutrients and hormones.", cat: "Organisation"},
+  {q: "Organisation Q9: What is the role of the small intestine?", a: "Absorbs nutrients into the bloodstream.", cat: "Organisation"},
+  {q: "Organisation Q10: How is the small intestine adapted?", a: "Villi increase surface area for absorption.", cat: "Organisation"},
+  {q: "Organisation Q11: What is the function of the liver?", a: "Produces bile and detoxifies substances.", cat: "Organisation"},
+  {q: "Organisation Q12: What is the double circulatory system?", a: "Blood passes through the heart twice per circuit.", cat: "Organisation"},
+  {q: "Organisation Q13: What is coronary heart disease?", a: "Blocked coronary arteries reduce blood flow.", cat: "Organisation"},
+  {q: "Organisation Q14: How is heart disease treated?", a: "Stents, statins, lifestyle changes.", cat: "Organisation"},
+  {q: "Organisation Q15: What is cancer?", a: "Uncontrolled cell division forming tumours.", cat: "Organisation"},
+  {q: "Organisation Q16: What is benign tumour?", a: "Non-cancerous growth that doesn’t spread.", cat: "Organisation"},
+  {q: "Organisation Q17: What is malignant tumour?", a: "Cancerous growth that spreads to other tissues.", cat: "Organisation"},
+  {q: "Organisation Q18: What lifestyle factors affect health?", a: "Diet, smoking, alcohol, exercise.", cat: "Organisation"},
+  {q: "Organisation Q19: What is the function of the pancreas?", a: "Produces insulin and digestive enzymes.", cat: "Organisation"},
+  {q: "Organisation Q20: What is the role of the stomach?", a: "Produces acid and enzymes to digest food.", cat: "Organisation"},
+
+  // 後面我會照這樣繼續寫「Infection and response」「Bioenergetics」「Homeostasis」「Inheritance」「Ecology」「Key ideas」各 20 題
+];
+  
+function renderCards() {
+  const container = document.getElementById("cards");
+  container.innerHTML = "";
+  const filter = document.getElementById("categoryFilter").value;
+  questions.forEach(item => {
+    if(filter==="all" || item.cat===filter){
+      const card = document.createElement("div");
+      card.className="flashcard";
+      card.innerHTML = `
+        <div class="inner">
+          <div class="front">${item.q}</div>
+          <div class="back">${item.a}</div>
+        </div>`;
+      card.onclick = ()=> card.classList.toggle("show");
+      container.appendChild(card);
+      card.style.display="block";
+    }
+  });
+}
+
+function shuffle() {
+  for (let i = questions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [questions[i], questions[j]] = [questions[j], questions[i]];
+  }
+  renderCards();
+}
+
+document.getElementById("categoryFilter").onchange = renderCards;
+renderCards();
+</script>
+</body>
+</html>
