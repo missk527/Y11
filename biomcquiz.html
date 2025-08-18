@@ -1,0 +1,4243 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biology MC Quiz — Mega</title>
+  <style>
+    :root{
+      --green:#22aa77; --green-2:#55aa88; --red:#e05a5a; --bg1:#f0f9f5; --bg2:#e6f7ff;
+    }
+    body {
+      font-family: Arial,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+      text-align:center;
+      margin:20px;
+      background:linear-gradient(135deg,var(--bg1),var(--bg2),#ffffff);
+      color:#222;
+    }
+    h1{color:#228855;text-shadow:0 0 6px rgba(34,136,85,0.3); margin-bottom:10px}
+    #controls{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-bottom:12px}
+    button,select,label{
+      background:#ffffff;border:1px solid var(--green-2);color:#222;
+      padding:6px 12px;border-radius:8px;cursor:pointer;transition:all .25s ease
+    }
+    button:hover,select:hover{background:#e6f7ee;box-shadow:0 0 6px var(--green-2)}
+    #quiz{max-width:720px;margin:0 auto;text-align:left}
+    .card{
+      border:2px solid var(--green-2);border-radius:14px;background:#fdfdfd;
+      box-shadow:0 0 12px rgba(0,0,0,0.12), inset 0 0 4px rgba(0,0,0,0.05);
+      padding:16px;margin-top:12px
+    }
+    .q-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;background:#eefaf2;border:1px solid var(--green-2)}
+    .question{font-size:20px;line-height:1.5;margin:8px 0 12px 0}
+    .options{display:grid;grid-template-columns:1fr;gap:10px}
+    .opt{
+      display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #cfe8dc;border-radius:10px;
+      background:#ffffff; cursor:pointer; transition:transform .05s ease, background .25s ease;
+    }
+    .opt:hover{transform:translateY(-1px)}
+    .opt input{margin-top:3px}
+    .opt.correct{background:#e8fbf0;border-color:#9adeb9}
+    .opt.wrong{background:#fdeeee;border-color:#f3b2b2}
+    .explain{margin-top:8px;color:#444;font-size:14px;display:none}
+    .explain.show{display:block}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px}
+    .muted{opacity:.75}
+    .score{font-weight:600}
+    .progressWrap{flex:1;height:8px;background:#eaf4ef;border-radius:6px;overflow:hidden}
+    .progressBar{height:100%;width:0;background:linear-gradient(90deg,#a2e3c4,#85c9f2)}
+    #counter{margin-left:4px}
+    @media (min-width: 720px){
+      .options{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+  <h1>Biology MC Quiz — Mega</h1>
+  <div id="controls">
+    <label for="categoryFilter">分類：</label>
+    <select id="categoryFilter" aria-label="Category filter">
+      <option value="all" selected>全部</option>
+      <option value="Cell biology">Cell biology</option>
+      <option value="Organisation">Organisation</option>
+      <option value="Infection and response">Infection and response</option>
+      <option value="Bioenergetics">Bioenergetics</option>
+      <option value="Homeostasis and response">Homeostasis and response</option>
+      <option value="Inheritance, variation and evolution">Inheritance, variation and evolution</option>
+      <option value="Ecology">Ecology</option>
+      <option value="Key ideas">Key ideas</option>
+    </select>
+    <button id="prevBtn" type="button">上一題</button>
+    <button id="nextBtn" type="button">下一題</button>
+    <button id="shuffleBtn" type="button">重新配題</button>
+    <button id="resetBtn" type="button">重設分數</button>
+    <span id="counter" class="muted"></span>
+  </div>
+
+  <div id="quiz" class="card" role="region" aria-live="polite">
+    <div class="q-header">
+      <span id="catBadge" class="badge">全部</span>
+      <span class="score">分數：<span id="scoreText">0</span></span>
+    </div>
+    <div id="questionText" class="question">載入中…</div>
+    <div id="options" class="options"></div>
+    <div id="explain" class="explain"></div>
+    <div class="footer">
+      <div class="progressWrap" aria-hidden="true"><div id="progressBar" class="progressBar"></div></div>
+      <span id="counter2" class="muted"></span>
+    </div>
+  </div>
+
+<script>
+// --- 原始題庫（問與正確答案 + 類別） ---
+const baseQuestions=[
+  {
+    "q": "Bioenergetics Q1: Why are CAM plants adapted to arid environments?",
+    "a": "Open stomata at night to reduce water loss.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q2: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q3: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q4: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 10)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q5: Why do shade plants have more chlorophyll b?",
+    "a": "Broader absorption spectrum in low light.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q6: Seeds respire actively during germination. Why no photosynthesis? (variant 12)",
+    "a": "Lack developed chlorophyll and leaves.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q7: Which pigment absorbs light energy for photosynthesis? (variant 21)",
+    "a": "Chlorophyll (with accessory pigments).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q8: What limits photosynthesis at midday in cool CO₂-poor air? (variant 40)",
+    "a": "CO₂ concentration.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q9: A cyanobacterium performs photosynthesis without chloroplasts—how? (variant 36)",
+    "a": "Thylakoid membranes in the cytoplasm.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q10: Why does light intensity increase O₂ output up to a point?",
+    "a": "More excitation until another factor limits.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q11: Why are CAM plants adapted to arid environments? (variant 23)",
+    "a": "Open stomata at night to reduce water loss.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q12: What is the main ATP generation mechanism in mitochondria? (variant 50)",
+    "a": "Chemiosmosis via proton gradient.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q13: Why does temperature beyond optimum reduce photosynthesis? (variant 37)",
+    "a": "Enzyme denaturation and stomatal closure.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q14: In a light curve, O₂ output rises from 2.1 to 3.6 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q15: Aerobic respiration yields ~36 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference? (variant 31)",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q16: In a light curve, O₂ output rises from 3.4 to 4.9 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 30)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q17: What is the main ATP generation mechanism in mitochondria? (variant 35)",
+    "a": "Chemiosmosis via proton gradient.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q18: Rotenone inhibits the ETC in mitochondria. Immediate effect on NADH and ATP? (variant 29)",
+    "a": "NADH accumulates; ATP production falls.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q19: Why does light intensity increase O₂ output up to a point? (variant 8)",
+    "a": "More excitation until another factor limits.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q20: Why does muscle fatigue with anaerobic respiration?",
+    "a": "Lactic acid accumulation lowers pH.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q21: State the balanced equation for photosynthesis (words). (variant 44)",
+    "a": "Carbon dioxide + water → glucose + oxygen (light, chlorophyll).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q22: A cyanobacterium performs photosynthesis without chloroplasts—how? (variant 7)",
+    "a": "Thylakoid membranes in the cytoplasm.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q23: A plant is moved from 5% CO₂ to ambient air in bright light. What happens to photosynthetic rate? (variant 22)",
+    "a": "It decreases—CO₂ is now limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q24: What is RQ (respiratory quotient)? (variant 6)",
+    "a": "CO₂ produced ÷ O₂ consumed.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q25: What is the main ATP generation mechanism in mitochondria?",
+    "a": "Chemiosmosis via proton gradient.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q26: Where does the Krebs cycle occur?",
+    "a": "Mitochondrial matrix.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q27: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q28: Why do yeast form ethanol anaerobically?",
+    "a": "Regenerate NAD⁺ for glycolysis.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q29: Aerobic respiration yields ~36 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q30: Where does the Calvin cycle occur? (variant 38)",
+    "a": "Stroma of the chloroplast.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q31: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q32: What is the main product of the Calvin cycle?",
+    "a": "Triose phosphate (leading to glucose).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q33: In a light curve, O₂ output rises from 2.1 to 3.6 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q34: In a light curve, O₂ output rises from 3.4 to 4.9 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q35: Where does glycolysis occur?",
+    "a": "Cytosol.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q36: In a light curve, O₂ output rises from 4.0 to 6.0 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 46)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q37: In a light curve, O₂ output rises from 2.1 to 3.6 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 43)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q38: What is photolysis of water? (variant 9)",
+    "a": "Light-driven splitting of water to O₂, H⁺, and e⁻.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q39: Define respiration in cells. (variant 28)",
+    "a": "Release of energy from food molecules.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q40: What is the main product of the Calvin cycle? (variant 27)",
+    "a": "Triose phosphate (leading to glucose).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q41: What is photolysis of water?",
+    "a": "Light-driven splitting of water to O₂, H⁺, and e⁻.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q42: What limits photosynthesis on a cold bright day? (variant 41)",
+    "a": "Temperature (enzyme activity).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q43: Aerobic respiration yields ~36 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q44: DCPIP is reduced during photosynthesis. What does this indicate?",
+    "a": "Electron flow from light reactions.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q45: Where do light-dependent reactions occur?",
+    "a": "Thylakoid membranes.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q46: In a light curve, O₂ output rises from 2.1 to 3.6 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 16)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q47: State the balanced equation for photosynthesis (words). (variant 20)",
+    "a": "Carbon dioxide + water → glucose + oxygen (light, chlorophyll).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q48: Rotenone inhibits the ETC in mitochondria. Immediate effect on NADH and ATP? (variant 32)",
+    "a": "NADH accumulates; ATP production falls.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q49: Where is the electron transport chain in respiration?",
+    "a": "Inner mitochondrial membrane.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q50: Aerobic respiration yields ~36 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference? (variant 5)",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q51: A cyanobacterium performs photosynthesis without chloroplasts—how?",
+    "a": "Thylakoid membranes in the cytoplasm.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q52: Why is a greenhouse enriched with CO₂ early morning? (variant 13)",
+    "a": "Light rises; CO₂ becomes limiting before temperature.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q53: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference? (variant 48)",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q54: A plant is moved from 5% CO₂ to ambient air in bright light. What happens to photosynthetic rate?",
+    "a": "It decreases—CO₂ is now limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q55: Aerobic respiration yields ~36 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q56: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 47)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q57: In a light curve, O₂ output rises from 2.1 to 3.6 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 4)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q58: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference? (variant 3)",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q59: In a light curve, O₂ output rises from 3.4 to 4.9 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 25)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q60: Why does aerobic respiration yield more ATP than anaerobic?",
+    "a": "Oxygen is the final electron acceptor enabling ETC.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q61: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 17)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q62: In a light curve, O₂ output rises from 2.1 to 4.1 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 49)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q63: Why is a greenhouse enriched with CO₂ early morning?",
+    "a": "Light rises; CO₂ becomes limiting before temperature.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q64: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q65: Where is the electron transport chain in respiration? (variant 19)",
+    "a": "Inner mitochondrial membrane.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q66: A plant is moved from 5% CO₂ to ambient air in bright light. What happens to photosynthetic rate? (variant 14)",
+    "a": "It decreases—CO₂ is now limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q67: A leaf kept at 35°C with high light shows declining photosynthesis over hours. Why?",
+    "a": "Stomata close to conserve water; CO₂ becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q68: Why does cyanide kill rapidly?",
+    "a": "Blocks cytochrome oxidase in ETC.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q69: What is RQ (respiratory quotient)?",
+    "a": "CO₂ produced ÷ O₂ consumed.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q70: What is the main product of the Calvin cycle? (variant 18)",
+    "a": "Triose phosphate (leading to glucose).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q71: Why do yeast form ethanol anaerobically? (variant 42)",
+    "a": "Regenerate NAD⁺ for glycolysis.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q72: In a light curve, O₂ output rises from 3.4 to 5.4 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q73: Why does muscle fatigue with anaerobic respiration? (variant 24)",
+    "a": "Lactic acid accumulation lowers pH.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q74: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q75: Where does the Calvin cycle occur?",
+    "a": "Stroma of the chloroplast.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q76: Rotenone inhibits the ETC in mitochondria. Immediate effect on NADH and ATP? (variant 1)",
+    "a": "NADH accumulates; ATP production falls.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q77: Define respiration in cells.",
+    "a": "Release of energy from food molecules.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q78: What limits photosynthesis on a cold bright day? (variant 26)",
+    "a": "Temperature (enzyme activity).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q79: Aerobic respiration yields ~34 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference? (variant 2)",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q80: Why does temperature beyond optimum reduce photosynthesis?",
+    "a": "Enzyme denaturation and stomatal closure.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q81: Why does temperature beyond optimum reduce photosynthesis? (variant 33)",
+    "a": "Enzyme denaturation and stomatal closure.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q82: Aerobic respiration yields ~34 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q83: What limits photosynthesis at midday in cool CO₂-poor air?",
+    "a": "CO₂ concentration.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q84: Why does muscle fatigue with anaerobic respiration? (variant 45)",
+    "a": "Lactic acid accumulation lowers pH.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q85: In a light curve, O₂ output rises from 3.4 to 5.4 arbitrary units as light increases, then plateaus. What concept explains the plateau? (variant 39)",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q86: Aerobic respiration yields ~34 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q87: In a light curve, O₂ output rises from 2.1 to 3.6 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q88: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference? (variant 34)",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q89: Where is the electron transport chain in respiration? (variant 15)",
+    "a": "Inner mitochondrial membrane.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q90: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 2. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q91: Why do shade plants have more chlorophyll b? (variant 11)",
+    "a": "Broader absorption spectrum in low light.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q92: What limits photosynthesis on a cold bright day?",
+    "a": "Temperature (enzyme activity).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q93: Why does chilling reduce enzyme-catalysed respiration rate?",
+    "a": "Lower kinetic energy reduces collisions.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q94: Rotenone inhibits the ETC in mitochondria. Immediate effect on NADH and ATP?",
+    "a": "NADH accumulates; ATP production falls.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q95: State the balanced equation for photosynthesis (words).",
+    "a": "Carbon dioxide + water → glucose + oxygen (light, chlorophyll).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q96: In a light curve, O₂ output rises from 4.0 to 6.0 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q97: Seeds respire actively during germination. Why no photosynthesis?",
+    "a": "Lack developed chlorophyll and leaves.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q98: In a light curve, O₂ output rises from 3.4 to 4.9 arbitrary units as light increases, then plateaus. What concept explains the plateau?",
+    "a": "A different factor becomes limiting.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q99: Aerobic respiration yields ~32 ATP per glucose in a given cell type; anaerobic yields 3. Why the large difference?",
+    "a": "ETC and oxidative phosphorylation operate only with oxygen.",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Bioenergetics Q100: Which pigment absorbs light energy for photosynthesis?",
+    "a": "Chlorophyll (with accessory pigments).",
+    "cat": "Bioenergetics"
+  },
+  {
+    "q": "Cell biology Q1: A cell is 5 µm wide; its image is 20 mm wide. What is the magnification?",
+    "a": "×4000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q2: Define diffusion.",
+    "a": "Net movement of particles down a concentration gradient.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q3: Why do neurons rely heavily on active transport?",
+    "a": "Maintain resting potentials and neurotransmission.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q4: What is the function of centrioles in animal cells?",
+    "a": "Organise spindle microtubules during cell division.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q5: Cold-adapted fish have more unsaturated membrane lipids. Why?",
+    "a": "Maintain membrane fluidity at low temperatures.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q6: Why does a root hair cell use active transport for mineral ions?",
+    "a": "Soil ion concentration is often lower than inside the cell.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q7: Why does turgor maintain plant rigidity?",
+    "a": "Hydrostatic pressure presses membrane against cell wall.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q8: A cell is 50 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×200",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q9: What is a plasmodesma? (variant 6)",
+    "a": "Plant cell cytoplasmic channel through cell walls.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q10: A cell is 10 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×1000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q11: What is a stem cell?",
+    "a": "Undifferentiated cell capable of self-renewal and specialisation.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q12: Where is rRNA transcribed and ribosomes assembled?",
+    "a": "Nucleolus.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q13: What is the function of chloroplast thylakoid membranes?",
+    "a": "Site of light-dependent reactions.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q14: Why do white blood cells display extensive lysosomes? (variant 26)",
+    "a": "Digest engulfed pathogens.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q15: Why does a root hair cell use active transport for mineral ions? (variant 13)",
+    "a": "Soil ion concentration is often lower than inside the cell.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q16: What is the main function of peroxisomes? (variant 9)",
+    "a": "Detoxify harmful peroxides via catalase and oxidases.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q17: Which measures image clarity—resolution or magnification?",
+    "a": "Resolution.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q18: Why do neurons rely heavily on active transport? (variant 25)",
+    "a": "Maintain resting potentials and neurotransmission.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q19: A lab observes smooth ER proliferation after drug exposure. Explain.",
+    "a": "Detoxification enzymes are upregulated.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q20: What is the primary function of mitochondria?",
+    "a": "Aerobic respiration to release ATP.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q21: Why does a root hair cell use active transport for mineral ions? (variant 30)",
+    "a": "Soil ion concentration is often lower than inside the cell.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q22: What checkpoint prevents damaged DNA from being replicated?",
+    "a": "G1 checkpoint.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q23: Why are membranes described as selectively permeable?",
+    "a": "They allow specific molecules via proteins; restrict others.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q24: How does meiosis generate variation?",
+    "a": "Independent assortment and crossing over.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q25: A cell is 50 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×200",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q26: Why do liver and muscle cells often have abundant smooth ER?",
+    "a": "Lipid metabolism and detoxification.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q27: What is a lysosome’s function?",
+    "a": "Intracellular digestion via hydrolytic enzymes.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q28: A drug collapses the proton gradient in mitochondria. What happens to ATP yield?",
+    "a": "ATP synthesis falls sharply; chemiosmosis is disrupted.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q29: Why do secretory cells have extensive Golgi and rough ER?",
+    "a": "High protein secretion demands.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q30: Cells exposed to cyanide quickly die. Which organelle is primarily affected?",
+    "a": "Mitochondria—ETC inhibition.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q31: What is facilitated diffusion? (variant 15)",
+    "a": "Carrier or channel-mediated passive transport.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q32: A mutation removes signal peptides from secreted proteins. Where do proteins accumulate?",
+    "a": "Cytosol; they fail to enter rough ER.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q33: What happens to an animal cell in a hypertonic solution?",
+    "a": "It shrinks (crenates) as water leaves by osmosis.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q34: Hypotonic shock bursts animal cells but not plant cells—explain. (variant 21)",
+    "a": "Plant cell wall resists lysis; animals lack walls.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q35: What happens to a plant cell in a hypotonic solution?",
+    "a": "Becomes turgid as water enters; cell wall prevents bursting.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q36: A cell is 50 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×200",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q37: What is a plasmodesma?",
+    "a": "Plant cell cytoplasmic channel through cell walls.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q38: Which stain binds strongly to DNA for microscopy?",
+    "a": "Ethidium bromide or DAPI (fluorescent).",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q39: What feature makes rough ER 'rough' and why is it important? (variant 5)",
+    "a": "Bound ribosomes; co-translational protein processing.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q40: What property of membranes allows selective permeability?",
+    "a": "Hydrophobic core and specific transport proteins.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q41: Why do red blood cells lack nuclei in mammals? (variant 11)",
+    "a": "Maximise space for haemoglobin and gas transport.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q42: Why does turgor maintain plant rigidity? (variant 10)",
+    "a": "Hydrostatic pressure presses membrane against cell wall.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q43: A toxin blocks ribosomes. Which cellular process is directly impaired first, and why?",
+    "a": "Protein synthesis—translation stops immediately.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q44: Which measures image clarity—resolution or magnification? (variant 7)",
+    "a": "Resolution.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q45: Why does a small organism lose heat faster than a large one?",
+    "a": "Higher surface area to volume ratio.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q46: What is the role of the cytoskeleton microtubules? (variant 18)",
+    "a": "Cell shape, intracellular transport, spindle formation.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q47: Why do prokaryotes grow rapidly in optimal conditions?",
+    "a": "Short generation time and simple genome.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q48: Why are epithelial cells thin and flattened? (variant 12)",
+    "a": "Short diffusion path for exchange.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q49: What is the function of cellulose cell walls in plants?",
+    "a": "Provide rigidity and resist osmotic swelling.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q50: What is the role of the Golgi apparatus?",
+    "a": "Modify, sort, and package proteins and lipids.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q51: What is mitosis primarily for in multicellular organisms? (variant 29)",
+    "a": "Growth and replacement of identical cells.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q52: Why do secretory cells have extensive Golgi and rough ER? (variant 17)",
+    "a": "High protein secretion demands.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q53: Why does the inner mitochondrial membrane contain many proteins?",
+    "a": "Hosts ETC complexes and ATP synthase.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q54: What equation links image size, real size, and magnification? (variant 28)",
+    "a": "Magnification = image size ÷ real size.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q55: What is the function of chloroplast thylakoid membranes? (variant 3)",
+    "a": "Site of light-dependent reactions.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q56: Why do membranes become more fluid at higher temperature?",
+    "a": "Phospholipids have increased kinetic energy.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q57: Ribosomes perform which key process in cells?",
+    "a": "Translation—assembling amino acids into polypeptides.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q58: Define active transport.",
+    "a": "Movement against a gradient using ATP and carrier proteins.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q59: A cell is 5 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×2000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q60: A plant cell placed in concentrated sucrose becomes plasmolysed. Why?",
+    "a": "Water leaves; external water potential is lower.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q61: What is facilitated diffusion?",
+    "a": "Carrier or channel-mediated passive transport.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q62: A cell is 5 µm wide; its image is 40 mm wide. What is the magnification?",
+    "a": "×8000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q63: What is the main function of peroxisomes?",
+    "a": "Detoxify harmful peroxides via catalase and oxidases.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q64: Why are membranes described as selectively permeable? (variant 22)",
+    "a": "They allow specific molecules via proteins; restrict others.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q65: Why are epithelial cells thin and flattened?",
+    "a": "Short diffusion path for exchange.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q66: Why are cristae in mitochondria highly folded?",
+    "a": "Increase surface area for electron transport and ATP synthase.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q67: Why are cristae in mitochondria highly folded? (variant 1)",
+    "a": "Increase surface area for electron transport and ATP synthase.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q68: Cilia are immotile due to dynein defects. Which process is impaired?",
+    "a": "Microtubule sliding that drives ciliary beating.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q69: Why is binary fission faster than mitosis?",
+    "a": "Prokaryotes have simpler DNA and division machinery.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q70: Which structure controls what enters and leaves the nucleus?",
+    "a": "The nuclear envelope with nuclear pores.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q71: What is the role of the cytoskeleton microtubules?",
+    "a": "Cell shape, intracellular transport, spindle formation.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q72: Why do white blood cells display extensive lysosomes?",
+    "a": "Digest engulfed pathogens.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q73: A cell is 20 µm wide; its image is 20 mm wide. What is the magnification? (variant 24)",
+    "a": "×1000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q74: A cell is 10 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×1000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q75: What is the function of cellulose cell walls in plants? (variant 14)",
+    "a": "Provide rigidity and resist osmotic swelling.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q76: A cell is 20 µm wide; its image is 20 mm wide. What is the magnification?",
+    "a": "×1000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q77: A cell is 50 µm wide; its image is 10 mm wide. What is the magnification? (variant 27)",
+    "a": "×200",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q78: A toxin blocks ribosomes. Which cellular process is directly impaired first, and why? (variant 2)",
+    "a": "Protein synthesis—translation stops immediately.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q79: Why are cristae in mitochondria highly folded? (variant 19)",
+    "a": "Increase surface area for electron transport and ATP synthase.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q80: What feature makes rough ER 'rough' and why is it important?",
+    "a": "Bound ribosomes; co-translational protein processing.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q81: A cell is 10 µm wide; its image is 10 mm wide. What is the magnification? (variant 16)",
+    "a": "×1000",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q82: Why does boiling destroy membrane transport proteins’ function?",
+    "a": "Denaturation alters tertiary structure and active sites.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q83: What is the fluid mosaic model?",
+    "a": "Phospholipid bilayer with mobile proteins.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q84: A mutation removes signal peptides from secreted proteins. Where do proteins accumulate? (variant 23)",
+    "a": "Cytosol; they fail to enter rough ER.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q85: Define osmosis precisely.",
+    "a": "Net movement of water down a water potential gradient through a partially permeable membrane.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q86: An antibody binds to sodium–potassium pumps. Predict the effect on membrane potential.",
+    "a": "Depolarisation risk; ion gradients dissipate.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q87: How do aquaporins affect osmosis?",
+    "a": "Increase water permeability across membranes.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q88: Why do red blood cells lack nuclei in mammals?",
+    "a": "Maximise space for haemoglobin and gas transport.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q89: What is the function of cell membrane cholesterol in animals?",
+    "a": "Stabilises membrane fluidity across temperatures.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q90: An antibody binds to sodium–potassium pumps. Predict the effect on membrane potential. (variant 8)",
+    "a": "Depolarisation risk; ion gradients dissipate.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q91: How does increasing magnification affect field of view?",
+    "a": "Field of view decreases as magnification increases.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q92: Why do rapidly dividing cancer cells consume much glucose even in oxygen?",
+    "a": "Warburg effect—high glycolytic flux.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q93: A cell is 20 µm wide; its image is 10 mm wide. What is the magnification?",
+    "a": "×500",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q94: Hypotonic shock bursts animal cells but not plant cells—explain.",
+    "a": "Plant cell wall resists lysis; animals lack walls.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q95: Which organelles collaborate in protein secretion?",
+    "a": "Rough ER → Golgi → vesicles → membrane.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q96: What equation links image size, real size, and magnification?",
+    "a": "Magnification = image size ÷ real size.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q97: What property of membranes allows selective permeability? (variant 4)",
+    "a": "Hydrophobic core and specific transport proteins.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q98: Prokaryotes lack membrane-bound organelles; name a genetic feature they often possess.",
+    "a": "Circular DNA plus plasmids.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q99: What is mitosis primarily for in multicellular organisms?",
+    "a": "Growth and replacement of identical cells.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Cell biology Q100: What happens to an animal cell in a hypertonic solution? (variant 20)",
+    "a": "It shrinks (crenates) as water leaves by osmosis.",
+    "cat": "Cell biology"
+  },
+  {
+    "q": "Ecology Q1: Purpose of using quadrats in fieldwork? (variant 30)",
+    "a": "Estimate abundance in a standard area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q2: What cycle returns carbon to the atmosphere from organisms? (variant 37)",
+    "a": "Respiration and decomposition.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q3: Define niche. (variant 43)",
+    "a": "The role of a species in its ecosystem.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q4: A population is 120; births 13, deaths 7 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q5: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 35)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q6: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 49)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q7: Why is energy transfer inefficient between trophic levels? (variant 21)",
+    "a": "Energy lost as heat, waste, and incomplete consumption.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q8: What is eutrophication? (variant 4)",
+    "a": "Nutrient enrichment causing algal blooms and oxygen depletion.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q9: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q10: What is a trophic level? (variant 50)",
+    "a": "Position in a food chain.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q11: Why are top predators vulnerable to pollutants? (variant 8)",
+    "a": "Bioaccumulation and biomagnification.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q12: Why is energy transfer inefficient between trophic levels? (variant 7)",
+    "a": "Energy lost as heat, waste, and incomplete consumption.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q13: Why randomise quadrat placement?",
+    "a": "Reduce sampling bias.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q14: What is mark–release–recapture used for? (variant 26)",
+    "a": "Estimate population size.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q15: Give the basic MRR formula for population size. (variant 16)",
+    "a": "N ≈ (marked × captured) ÷ recaptured.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q16: Give the basic MRR formula for population size.",
+    "a": "N ≈ (marked × captured) ÷ recaptured.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q17: What is a keystone species? (variant 15)",
+    "a": "Species with disproportionate effect on ecosystem structure.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q18: Why are peat bogs important carbon stores?",
+    "a": "Partially decomposed biomass accumulates waterlogged.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q19: Define habitat. (variant 34)",
+    "a": "The natural environment where an organism lives.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q20: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q21: Define succession.",
+    "a": "Directional change in a community over time.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q22: A population is 108; births 25, deaths 18 in a year with no migration. What happens to population size? (variant 33)",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q23: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q24: Why are top predators vulnerable to pollutants?",
+    "a": "Bioaccumulation and biomagnification.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q25: Define biodiversity. (variant 22)",
+    "a": "Variety of life at all levels in an area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q26: Define biomass.",
+    "a": "Total mass of living material in an area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q27: Purpose of transects?",
+    "a": "Assess change in species along an environmental gradient.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q28: What is the greenhouse effect? (variant 19)",
+    "a": "Atmospheric gases trap outgoing infrared radiation.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q29: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 23)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q30: A population is 101; births 20, deaths 11 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q31: Define biomass. (variant 12)",
+    "a": "Total mass of living material in an area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q32: Why does deforestation reduce local rainfall over time?",
+    "a": "Less transpiration and altered microclimate.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q33: Why do invasive species often spread rapidly?",
+    "a": "Lack of natural predators and high reproductive rate.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q34: Why do line transects help on shores?",
+    "a": "Capture zonation across tidal gradients.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q35: A population is 87; births 29, deaths 9 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q36: Why do line transects help on shores? (variant 3)",
+    "a": "Capture zonation across tidal gradients.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q37: Define biodiversity. (variant 46)",
+    "a": "Variety of life at all levels in an area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q38: What is mark–release–recapture used for? (variant 31)",
+    "a": "Estimate population size.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q39: What is a trophic level? (variant 45)",
+    "a": "Position in a food chain.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q40: A population is 84; births 19, deaths 17 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q41: A population is 108; births 25, deaths 18 in a year with no migration. What happens to population size? (variant 24)",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q42: Purpose of transects? (variant 2)",
+    "a": "Assess change in species along an environmental gradient.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q43: What is a decomposer’s role?",
+    "a": "Break down dead matter, recycling nutrients.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q44: How can camera traps reduce disturbance?",
+    "a": "Record presence without direct human presence.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q45: What is a decomposer’s role? (variant 5)",
+    "a": "Break down dead matter, recycling nutrients.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q46: Purpose of using quadrats in fieldwork?",
+    "a": "Estimate abundance in a standard area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q47: How do legumes increase soil nitrogen? (variant 47)",
+    "a": "Symbiotic nitrogen‑fixing bacteria in root nodules.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q48: Define niche. (variant 41)",
+    "a": "The role of a species in its ecosystem.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q49: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 18)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q50: Define niche.",
+    "a": "The role of a species in its ecosystem.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q51: Why randomise quadrat placement? (variant 17)",
+    "a": "Reduce sampling bias.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q52: What is a trophic level?",
+    "a": "Position in a food chain.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q53: Why record abiotic factors during sampling?",
+    "a": "Correlate species with environmental variables.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q54: What cycle returns carbon to the atmosphere from organisms?",
+    "a": "Respiration and decomposition.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q55: What is eutrophication?",
+    "a": "Nutrient enrichment causing algal blooms and oxygen depletion.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q56: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q57: Why standardise sampling effort and time?",
+    "a": "Ensure comparable data across sites.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q58: What is biomagnification?",
+    "a": "Increase in toxin concentration up food chains.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q59: Why record abiotic factors during sampling? (variant 36)",
+    "a": "Correlate species with environmental variables.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q60: Why is Simpson’s index useful? (variant 44)",
+    "a": "Measures diversity considering richness and evenness.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q61: How can camera traps reduce disturbance? (variant 20)",
+    "a": "Record presence without direct human presence.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q62: A population is 103; births 22, deaths 19 in a year with no migration. What happens to population size? (variant 13)",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q63: What is mark–release–recapture used for? (variant 1)",
+    "a": "Estimate population size.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q64: What is biomagnification? (variant 48)",
+    "a": "Increase in toxin concentration up food chains.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q65: Why is energy transfer inefficient between trophic levels? (variant 9)",
+    "a": "Energy lost as heat, waste, and incomplete consumption.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q66: Why standardise sampling effort and time? (variant 40)",
+    "a": "Ensure comparable data across sites.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q67: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q68: A population is 108; births 25, deaths 18 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q69: What is the greenhouse effect?",
+    "a": "Atmospheric gases trap outgoing infrared radiation.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q70: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 38)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q71: Define habitat.",
+    "a": "The natural environment where an organism lives.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q72: What is mark–release–recapture used for?",
+    "a": "Estimate population size.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q73: What is biomagnification? (variant 25)",
+    "a": "Increase in toxin concentration up food chains.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q74: How do legumes increase soil nitrogen?",
+    "a": "Symbiotic nitrogen‑fixing bacteria in root nodules.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q75: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 14)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q76: Define ecosystem. (variant 6)",
+    "a": "Community of organisms plus abiotic environment.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q77: A population is 130; births 11, deaths 11 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q78: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q79: Why randomise quadrat placement? (variant 10)",
+    "a": "Reduce sampling bias.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q80: Why record abiotic factors during sampling? (variant 11)",
+    "a": "Correlate species with environmental variables.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q81: What is a keystone species?",
+    "a": "Species with disproportionate effect on ecosystem structure.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q82: Why is Simpson’s index useful?",
+    "a": "Measures diversity considering richness and evenness.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q83: Define biodiversity.",
+    "a": "Variety of life at all levels in an area.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q84: Define carrying capacity.",
+    "a": "Maximum population size environment can sustain.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q85: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 32)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q86: A population is 133; births 11, deaths 6 in a year with no migration. What happens to population size? (variant 27)",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q87: Define ecosystem.",
+    "a": "Community of organisms plus abiotic environment.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q88: A population is 103; births 30, deaths 19 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q89: A population is 103; births 22, deaths 19 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q90: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q91: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off? (variant 39)",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q92: Give the basic MRR formula for population size. (variant 42)",
+    "a": "N ≈ (marked × captured) ÷ recaptured.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q93: A population is 83; births 29, deaths 9 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q94: Why is energy transfer inefficient between trophic levels?",
+    "a": "Energy lost as heat, waste, and incomplete consumption.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q95: What is biomagnification? (variant 29)",
+    "a": "Increase in toxin concentration up food chains.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q96: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q97: A population is 133; births 11, deaths 6 in a year with no migration. What happens to population size?",
+    "a": "It increases by births − deaths.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q98: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q99: After fertiliser runoff, a lake shows algal blooms then fish die. What process explains the die‑off?",
+    "a": "Eutrophication reduces dissolved oxygen.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Ecology Q100: Why do line transects help on shores? (variant 28)",
+    "a": "Capture zonation across tidal gradients.",
+    "cat": "Ecology"
+  },
+  {
+    "q": "Homeostasis and response Q1: Why do blood vessels in skin vasodilate when hot?",
+    "a": "Increase heat loss by radiation/convection.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q2: Which kidney structure is the main site of water reabsorption regulated by ADH? (variant 42)",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q3: Blood glucose rises from 6.5 to 9.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 37)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q4: Where are insulin and glucagon produced?",
+    "a": "Pancreatic islets (β and α cells).",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q5: Blood glucose rises from 6.5 to 10.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 17)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q6: Why do steroid hormones act slowly but persistently?",
+    "a": "They alter gene transcription.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q7: Why are rods sensitive in dim light? (variant 15)",
+    "a": "Rhodopsin amplifies signals; many converge on neurons.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q8: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q9: During prolonged exercise, what happens to glucagon levels and why?",
+    "a": "They rise to mobilise glucose from glycogen.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q10: Blood glucose rises from 4.5 to 6.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 22)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q11: Blood glucose rises from 5.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 46)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q12: Blood glucose rises from 5.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 3)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q13: Why does insulin promote glycogenesis?",
+    "a": "Stores excess glucose as glycogen in liver/muscle.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q14: Adrenaline prepares the body for fight‑or‑flight. Two effects? (variant 10)",
+    "a": "Increased heart rate and blood glucose.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q15: Which hormone lowers blood glucose?",
+    "a": "Insulin.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q16: What is the role of ADH? (variant 16)",
+    "a": "Increases kidney water reabsorption.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q17: A patient with pituitary damage produces little ADH. Urine effect?",
+    "a": "Large volumes of dilute urine (diabetes insipidus).",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q18: Which organ controls body temperature set point? (variant 12)",
+    "a": "Hypothalamus.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q19: Blood glucose rises from 4.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 33)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q20: What is a reflex arc? (variant 36)",
+    "a": "Rapid, involuntary response via spinal cord.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q21: Which organ controls body temperature set point?",
+    "a": "Hypothalamus.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q22: A drug blocks voltage‑gated Ca²⁺ channels at synapses. Effect?",
+    "a": "Neurotransmitter release decreases.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q23: What is negative feedback? (variant 48)",
+    "a": "A change triggers responses that counteract the change.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q24: Exposure to cold triggers which two thermoregulatory responses? (variant 43)",
+    "a": "Vasoconstriction and shivering.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q25: Adrenaline prepares the body for fight‑or‑flight. Two effects? (variant 9)",
+    "a": "Increased heart rate and blood glucose.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q26: What is the role of ADH? (variant 30)",
+    "a": "Increases kidney water reabsorption.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q27: Blood glucose rises from 4.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 6)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q28: Blood glucose rises from 5.5 to 9.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q29: Adrenaline prepares the body for fight‑or‑flight. Two effects?",
+    "a": "Increased heart rate and blood glucose.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q30: Why do peptide hormones act quickly? (variant 24)",
+    "a": "They use membrane receptors and second messengers.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q31: Blood glucose rises from 4.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q32: Why does sweating cool the body? (variant 49)",
+    "a": "Evaporation absorbs latent heat.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q33: Blood glucose rises from 6.5 to 10.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q34: Why does sweating cool the body?",
+    "a": "Evaporation absorbs latent heat.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q35: Why do cones provide colour vision and acuity? (variant 7)",
+    "a": "Each connects to a single bipolar/optic nerve fibre.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q36: Thyroxine increases basal metabolic rate. What happens with iodine deficiency? (variant 23)",
+    "a": "Thyroxine falls; possible goitre.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q37: Exposure to cold triggers which two thermoregulatory responses? (variant 35)",
+    "a": "Vasoconstriction and shivering.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q38: Why does shivering generate heat? (variant 14)",
+    "a": "Rapid muscle contractions increase respiration.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q39: Blood glucose rises from 5.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 45)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q40: Why does ADH increase during dehydration? (variant 27)",
+    "a": "Conserve water by making collecting ducts more permeable.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q41: Blood glucose rises from 3.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q42: Thyroxine increases basal metabolic rate. What happens with iodine deficiency?",
+    "a": "Thyroxine falls; possible goitre.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q43: High altitude stimulates which hormone to increase RBC production?",
+    "a": "Erythropoietin.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q44: Which hormone raises blood glucose?",
+    "a": "Glucagon.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q45: What is the role of ADH?",
+    "a": "Increases kidney water reabsorption.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q46: What is negative feedback? (variant 18)",
+    "a": "A change triggers responses that counteract the change.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q47: Where are insulin and glucagon produced? (variant 28)",
+    "a": "Pancreatic islets (β and α cells).",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q48: Why do cones provide colour vision and acuity? (variant 19)",
+    "a": "Each connects to a single bipolar/optic nerve fibre.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q49: Which kidney structure is the main site of water reabsorption regulated by ADH? (variant 32)",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q50: Why do peptide hormones act quickly? (variant 40)",
+    "a": "They use membrane receptors and second messengers.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q51: Which organ controls body temperature set point? (variant 41)",
+    "a": "Hypothalamus.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q52: Blocking acetylcholinesterase causes what at the synapse? (variant 47)",
+    "a": "Prolonged ACh action; continuous stimulation.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q53: What is synaptic transmission mediated by? (variant 31)",
+    "a": "Neurotransmitters across synaptic clefts.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q54: Which kidney structure is the main site of water reabsorption regulated by ADH? (variant 11)",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q55: Why does ADH increase during dehydration? (variant 26)",
+    "a": "Conserve water by making collecting ducts more permeable.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q56: Exposure to cold triggers which two thermoregulatory responses?",
+    "a": "Vasoconstriction and shivering.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q57: A drug blocks voltage‑gated Ca²⁺ channels at synapses. Effect? (variant 25)",
+    "a": "Neurotransmitter release decreases.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q58: Why does shivering generate heat?",
+    "a": "Rapid muscle contractions increase respiration.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q59: After a carb‑heavy meal, what happens to insulin and blood glucose?",
+    "a": "Insulin rises; blood glucose falls toward normal.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q60: Blood glucose rises from 6.5 to 8.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 29)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q61: A student’s pupils constrict in bright light. Which muscle and system act?",
+    "a": "Circular iris muscles via parasympathetic.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q62: Why do peptide hormones act quickly?",
+    "a": "They use membrane receptors and second messengers.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q63: Define homeostasis. (variant 50)",
+    "a": "Maintenance of stable internal conditions.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q64: Blood glucose rises from 5.5 to 7.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q65: Why are rods sensitive in dim light?",
+    "a": "Rhodopsin amplifies signals; many converge on neurons.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q66: Blood glucose rises from 4.5 to 6.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q67: Adrenaline prepares the body for fight‑or‑flight. Two effects? (variant 20)",
+    "a": "Increased heart rate and blood glucose.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q68: Why does ADH increase during dehydration?",
+    "a": "Conserve water by making collecting ducts more permeable.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q69: Where are insulin and glucagon produced? (variant 21)",
+    "a": "Pancreatic islets (β and α cells).",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q70: Where is ADH released from?",
+    "a": "Posterior pituitary (from hypothalamic neurons).",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q71: Blood glucose rises from 5.5 to 9.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q72: Which kidney structure is the main site of water reabsorption regulated by ADH? (variant 5)",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q73: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q74: What is synaptic transmission mediated by?",
+    "a": "Neurotransmitters across synaptic clefts.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q75: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q76: Why do steroid hormones act slowly but persistently? (variant 34)",
+    "a": "They alter gene transcription.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q77: What is a reflex arc?",
+    "a": "Rapid, involuntary response via spinal cord.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q78: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q79: Blood glucose rises from 4.5 to 6.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q80: Blood glucose rises from 6.5 to 8.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q81: What is negative feedback?",
+    "a": "A change triggers responses that counteract the change.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q82: Blocking acetylcholinesterase causes what at the synapse?",
+    "a": "Prolonged ACh action; continuous stimulation.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q83: Blood glucose rises from 4.5 to 6.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 39)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q84: Why does ADH increase during dehydration? (variant 1)",
+    "a": "Conserve water by making collecting ducts more permeable.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q85: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q86: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q87: Define homeostasis.",
+    "a": "Maintenance of stable internal conditions.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q88: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q89: Why do diabetics have glucose in urine?",
+    "a": "Hyperglycaemia exceeds kidney reabsorption capacity.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q90: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q91: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q92: Which kidney structure is the main site of water reabsorption regulated by ADH?",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q93: Why do cones provide colour vision and acuity? (variant 4)",
+    "a": "Each connects to a single bipolar/optic nerve fibre.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q94: Why do cones provide colour vision and acuity?",
+    "a": "Each connects to a single bipolar/optic nerve fibre.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q95: Why does insulin promote glycogenesis? (variant 44)",
+    "a": "Stores excess glucose as glycogen in liver/muscle.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q96: Blood glucose rises from 6.5 to 9.8 mmol/L then returns to baseline. Which control principle explains the return?",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q97: Which kidney structure is the main site of water reabsorption regulated by ADH? (variant 2)",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q98: Adrenaline prepares the body for fight‑or‑flight. Two effects? (variant 8)",
+    "a": "Increased heart rate and blood glucose.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q99: Which kidney structure is the main site of water reabsorption regulated by ADH? (variant 38)",
+    "a": "Collecting duct.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Homeostasis and response Q100: Blood glucose rises from 5.5 to 9.8 mmol/L then returns to baseline. Which control principle explains the return? (variant 13)",
+    "a": "Negative feedback.",
+    "cat": "Homeostasis and response"
+  },
+  {
+    "q": "Infection and response Q1: Why are viruses obligate intracellular parasites? (variant 35)",
+    "a": "They require host machinery to replicate.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q2: What is herd immunity?",
+    "a": "Enough immune individuals reduce R below 1 to protect others.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q3: How do interferons help in viral infections?",
+    "a": "They induce antiviral states in neighbouring cells.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q4: Why is hand hygiene effective against infection? (variant 38)",
+    "a": "Removes/denatures pathogens; breaks transmission.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q5: What is the role of cytotoxic T cells? (variant 34)",
+    "a": "Kill infected cells presenting foreign antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q6: Why incubate school cultures at 25°C rather than 37°C? (variant 16)",
+    "a": "Reduce risk of growing human pathogens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q7: Why do some pathogens cause fever? (variant 42)",
+    "a": "Cytokines reset hypothalamic set point.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q8: A patient’s sore throat improves on antibiotics within 48h. What does this suggest? (variant 48)",
+    "a": "Bacterial cause.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q9: Food left at room temperature causes illness after 4–6 h. Likely mechanism? (variant 3)",
+    "a": "Preformed bacterial toxins (food poisoning).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q10: Why can HIV reduce immunity?",
+    "a": "Destroys helper T cells.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q11: What do vaccines contain to stimulate immunity?",
+    "a": "Antigens from a pathogen (attenuated or inactivated).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q12: What is inflammation’s function?",
+    "a": "Increase blood flow and immune cell recruitment.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q13: Define a pathogen.",
+    "a": "Microorganism that causes disease.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q14: How do vaccines protect the individual before exposure? (variant 30)",
+    "a": "Induce specific active immunity.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q15: What is herd immunity? (variant 36)",
+    "a": "Enough immune individuals reduce R below 1 to protect others.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q16: What is passive immunity? (variant 54)",
+    "a": "Antibodies received from another source (e.g., maternal).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q17: How do vaccines protect the individual before exposure? (variant 31)",
+    "a": "Induce specific active immunity.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q18: Why are viruses obligate intracellular parasites? (variant 32)",
+    "a": "They require host machinery to replicate.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q19: Why do some pathogens cause fever? (variant 50)",
+    "a": "Cytokines reset hypothalamic set point.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q20: Why do some pathogens cause fever? (variant 14)",
+    "a": "Cytokines reset hypothalamic set point.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q21: Why can HIV reduce immunity? (variant 11)",
+    "a": "Destroys helper T cells.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q22: An outbreak’s R is estimated at 0.7. What happens to case numbers? (variant 39)",
+    "a": "They decline over time.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q23: Why can overuse of antiviral monotherapy lead to resistance?",
+    "a": "Selective pressure on single target mutations.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q24: What is antigenic variation?",
+    "a": "Pathogens change surface antigens to evade immunity.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q25: What is the difference between bactericidal and bacteriostatic antibiotics?",
+    "a": "Kill bacteria vs inhibit growth.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q26: How do vaccines protect the individual before exposure? (variant 7)",
+    "a": "Induce specific active immunity.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q27: What is an antigen?",
+    "a": "Foreign protein/glycoprotein that triggers an immune response.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q28: What PPE protects against droplets?",
+    "a": "Masks and eye protection.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q29: Why is TB treated with multi-drug regimens?",
+    "a": "Reduce resistance emergence.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q30: Why do some pathogens cause fever? (variant 52)",
+    "a": "Cytokines reset hypothalamic set point.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q31: What is passive immunity?",
+    "a": "Antibodies received from another source (e.g., maternal).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q32: Why are viruses obligate intracellular parasites? (variant 26)",
+    "a": "They require host machinery to replicate.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q33: A disease spreads via mosquitoes. What transmission mode is this?",
+    "a": "Vector-borne transmission.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q34: Why double-blind trials? (variant 8)",
+    "a": "Reduce placebo and observer bias.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q35: What is the role of cytotoxic T cells?",
+    "a": "Kill infected cells presenting foreign antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q36: What is MRSA famous for?",
+    "a": "Resistance to many antibiotics (e.g., methicillin).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q37: What do memory cells provide?",
+    "a": "Faster, stronger secondary response.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q38: What is the role of B-lymphocytes?",
+    "a": "Differentiate into plasma cells to secrete antibodies.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q39: What do memory cells provide? (variant 25)",
+    "a": "Faster, stronger secondary response.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q40: A patient’s sore throat improves on antibiotics within 48h. What does this suggest? (variant 28)",
+    "a": "Bacterial cause.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q41: How do vaccines contribute to eradication campaigns?",
+    "a": "Lower transmission until reservoirs vanish.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q42: Why incubate school cultures at 25°C rather than 37°C? (variant 47)",
+    "a": "Reduce risk of growing human pathogens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q43: What is the zone of inhibition measuring? (variant 4)",
+    "a": "Antimicrobial effectiveness around a disk.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q44: Why is completing an antibiotic course important?",
+    "a": "Prevents survival of partially resistant bacteria.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q45: Why can overuse of antiviral monotherapy lead to resistance? (variant 5)",
+    "a": "Selective pressure on single target mutations.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q46: Define a pathogen. (variant 19)",
+    "a": "Microorganism that causes disease.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q47: What is the zone of inhibition measuring?",
+    "a": "Antimicrobial effectiveness around a disk.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q48: Why are viruses obligate intracellular parasites?",
+    "a": "They require host machinery to replicate.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q49: Why are viruses obligate intracellular parasites? (variant 44)",
+    "a": "They require host machinery to replicate.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q50: Why do antibiotics not cure viral infections?",
+    "a": "Viruses lack targets like cell walls and ribosomes.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q51: Why do antipyretics not cure infections?",
+    "a": "They relieve symptoms; they don't kill pathogens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q52: Why is TB treated with multi-drug regimens? (variant 29)",
+    "a": "Reduce resistance emergence.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q53: What is the role of T helper cells?",
+    "a": "Activate B cells and cytotoxic T cells.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q54: Why can broad-spectrum antibiotics disrupt gut health? (variant 51)",
+    "a": "They kill commensal flora.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q55: Food left at room temperature causes illness after 4–6 h. Likely mechanism?",
+    "a": "Preformed bacterial toxins (food poisoning).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q56: What is sterilisation? (variant 23)",
+    "a": "Complete destruction of all microorganisms and spores.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q57: Why double-blind trials?",
+    "a": "Reduce placebo and observer bias.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q58: A flu strain mutates its HA/NA proteins annually. What phenomenon is this?",
+    "a": "Antigenic drift.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q59: How do vaccines contribute to eradication campaigns? (variant 49)",
+    "a": "Lower transmission until reservoirs vanish.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q60: What is the role of B-lymphocytes? (variant 46)",
+    "a": "Differentiate into plasma cells to secrete antibodies.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q61: What is sterilisation? (variant 33)",
+    "a": "Complete destruction of all microorganisms and spores.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q62: What is an antigen? (variant 1)",
+    "a": "Foreign protein/glycoprotein that triggers an immune response.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q63: How does phagocytosis begin?",
+    "a": "Phagocyte recognises and engulfs pathogen.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q64: Why is hand hygiene effective against infection? (variant 53)",
+    "a": "Removes/denatures pathogens; breaks transmission.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q65: A patient’s sore throat improves on antibiotics within 48h. What does this suggest?",
+    "a": "Bacterial cause.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q66: Why can broad-spectrum antibiotics disrupt gut health? (variant 18)",
+    "a": "They kill commensal flora.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q67: What do vaccines contain to stimulate immunity? (variant 40)",
+    "a": "Antigens from a pathogen (attenuated or inactivated).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q68: Why is hand hygiene effective against infection?",
+    "a": "Removes/denatures pathogens; breaks transmission.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q69: Why incubate school cultures at 25°C rather than 37°C?",
+    "a": "Reduce risk of growing human pathogens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q70: Why do antibiotics not cure viral infections? (variant 15)",
+    "a": "Viruses lack targets like cell walls and ribosomes.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q71: Why incubate school cultures at 25°C rather than 37°C? (variant 43)",
+    "a": "Reduce risk of growing human pathogens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q72: Why do some pathogens cause fever?",
+    "a": "Cytokines reset hypothalamic set point.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q73: A vaccine booster increases antibody titre strongly. Why?",
+    "a": "Memory cells rapidly differentiate to plasma cells.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q74: What is herd immunity? (variant 2)",
+    "a": "Enough immune individuals reduce R below 1 to protect others.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q75: A virus integrates into host DNA. Name such a viral stage.",
+    "a": "Provirus/lysogenic stage.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q76: What is the role of cytotoxic T cells? (variant 41)",
+    "a": "Kill infected cells presenting foreign antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q77: Why can broad-spectrum antibiotics disrupt gut health?",
+    "a": "They kill commensal flora.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q78: What is aseptic technique for?",
+    "a": "Prevent contamination of cultures and environment.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q79: A patient has high fever, elevated neutrophils, and localised inflammation. Likely pathogen type? (variant 37)",
+    "a": "Bacterial infection.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q80: What is an antigen? (variant 10)",
+    "a": "Foreign protein/glycoprotein that triggers an immune response.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q81: What is sterilisation?",
+    "a": "Complete destruction of all microorganisms and spores.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q82: What is an antibody?",
+    "a": "Y‑shaped protein that specifically binds antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q83: What is contact tracing?",
+    "a": "Identifying and isolating contacts to break chains of transmission.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q84: What is an antibody? (variant 12)",
+    "a": "Y‑shaped protein that specifically binds antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q85: What is the difference between bactericidal and bacteriostatic antibiotics? (variant 6)",
+    "a": "Kill bacteria vs inhibit growth.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q86: A patient has high fever, elevated neutrophils, and localised inflammation. Likely pathogen type?",
+    "a": "Bacterial infection.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q87: Why do some pathogens cause fever? (variant 9)",
+    "a": "Cytokines reset hypothalamic set point.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q88: An outbreak’s R is estimated at 0.7. What happens to case numbers?",
+    "a": "They decline over time.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q89: An outbreak’s R is estimated at 0.7. What happens to case numbers? (variant 55)",
+    "a": "They decline over time.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q90: What is a control in a drug trial?",
+    "a": "Group without active drug for comparison (placebo).",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q91: What is herd immunity? (variant 27)",
+    "a": "Enough immune individuals reduce R below 1 to protect others.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q92: How do vaccines protect the individual before exposure?",
+    "a": "Induce specific active immunity.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q93: What is an antibody? (variant 22)",
+    "a": "Y‑shaped protein that specifically binds antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q94: Why do antibiotics not cure viral infections? (variant 45)",
+    "a": "Viruses lack targets like cell walls and ribosomes.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q95: What is disinfection?",
+    "a": "Reduction of microbial load on surfaces.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q96: What is an antibody? (variant 20)",
+    "a": "Y‑shaped protein that specifically binds antigens.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q97: What is inflammation’s function? (variant 17)",
+    "a": "Increase blood flow and immune cell recruitment.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q98: How do vaccines contribute to eradication campaigns? (variant 24)",
+    "a": "Lower transmission until reservoirs vanish.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q99: What is inflammation’s function? (variant 21)",
+    "a": "Increase blood flow and immune cell recruitment.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Infection and response Q100: How do vaccines protect the individual before exposure? (variant 13)",
+    "a": "Induce specific active immunity.",
+    "cat": "Infection and response"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q1: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 39)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q2: Why are mitochondrial disorders maternally inherited?",
+    "a": "Mitochondria are inherited from the egg cytoplasm.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q3: What does 'fitness' mean in evolution?",
+    "a": "Reproductive success relative to others.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q4: What is variation’s two main sources?",
+    "a": "Genetic and environmental.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q5: A pesticide is overused; resistant insects dominate. Evolutionary mechanism?",
+    "a": "Directional selection for resistance alleles.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q6: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 4)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q7: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 5)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q8: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q9: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q10: What is a selective sweep?",
+    "a": "Rapid fixation of an advantageous allele reduces variation nearby.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q11: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q12: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 15)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q13: What is a dominant allele? (variant 25)",
+    "a": "Expressed even with one copy.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q14: A population’s environment changes; individuals with thicker fur survive winter better. Over generations, fur thickness increases. Explain.",
+    "a": "Natural selection increases advantageous allele frequency.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q15: Why does inbreeding increase homozygosity? (variant 14)",
+    "a": "Related individuals share alleles, reducing heterozygosity.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q16: What is crossing over? (variant 3)",
+    "a": "Exchange of DNA between homologous chromatids.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q17: What is genotype vs phenotype?",
+    "a": "Genetic makeup vs observable characteristics.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q18: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 7)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q19: What is meiosis for? (variant 36)",
+    "a": "Halving chromosome number to form gametes.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q20: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 42)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q21: What drives natural selection?",
+    "a": "Differential survival and reproduction of heritable traits.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q22: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 43)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q23: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q24: What is crossing over?",
+    "a": "Exchange of DNA between homologous chromatids.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q25: What is a test cross used for? (variant 35)",
+    "a": "Determine unknown genotype using a homozygous recessive.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q26: What is gene flow? (variant 22)",
+    "a": "Movement of alleles between populations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q27: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 32)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q28: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q29: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q30: A gene has two alleles with frequencies p and q. What must p+q equal in Hardy–Weinberg equilibrium?",
+    "a": "1.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q31: What is a mutation?",
+    "a": "A change in DNA sequence.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q32: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q33: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q34: Why do linked genes not assort independently? (variant 12)",
+    "a": "They are on the same chromosome.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q35: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 48)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q36: What is variation’s two main sources? (variant 30)",
+    "a": "Genetic and environmental.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q37: Species A and B produce infertile hybrids. What isolating barrier exists?",
+    "a": "Postzygotic reproductive isolation.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q38: A small island population shows unusual traits after a storm isolates a few survivors. Process? (variant 41)",
+    "a": "Founder effect (genetic drift).",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q39: Species A and B produce infertile hybrids. What isolating barrier exists? (variant 31)",
+    "a": "Postzygotic reproductive isolation.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q40: Birds sing different mating songs across valleys, preventing interbreeding. Barrier?",
+    "a": "Behavioural (prezygotic) isolation.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q41: What is a dominant allele?",
+    "a": "Expressed even with one copy.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q42: What is a test cross used for? (variant 20)",
+    "a": "Determine unknown genotype using a homozygous recessive.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q43: What is meiosis for? (variant 2)",
+    "a": "Halving chromosome number to form gametes.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q44: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q45: What is an allele?",
+    "a": "Different version of the same gene.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q46: Why does inbreeding increase homozygosity?",
+    "a": "Related individuals share alleles, reducing heterozygosity.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q47: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q48: What is a selective sweep? (variant 50)",
+    "a": "Rapid fixation of an advantageous allele reduces variation nearby.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q49: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q50: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q51: What is artificial selection?",
+    "a": "Human‑directed breeding for desired traits.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q52: A small island population shows unusual traits after a storm isolates a few survivors. Process?",
+    "a": "Founder effect (genetic drift).",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q53: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q54: What is gene flow?",
+    "a": "Movement of alleles between populations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q55: What is gene flow? (variant 27)",
+    "a": "Movement of alleles between populations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q56: What is gene flow? (variant 37)",
+    "a": "Movement of alleles between populations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q57: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q58: A population’s environment changes; individuals with thicker fur survive winter better. Over generations, fur thickness increases. Explain. (variant 34)",
+    "a": "Natural selection increases advantageous allele frequency.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q59: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 29)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q60: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 16)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q61: What is an allele? (variant 45)",
+    "a": "Different version of the same gene.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q62: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 19)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q63: A gene has two alleles with frequencies p and q. What must p+q equal in Hardy–Weinberg equilibrium? (variant 49)",
+    "a": "1.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q64: Why are mutagens often carcinogenic?",
+    "a": "They increase DNA mutations affecting cell cycle control.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q65: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q66: What is a selective sweep? (variant 24)",
+    "a": "Rapid fixation of an advantageous allele reduces variation nearby.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q67: What is variation’s two main sources? (variant 46)",
+    "a": "Genetic and environmental.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q68: Why do linked genes not assort independently?",
+    "a": "They are on the same chromosome.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q69: Why is a sex‑linked recessive more common in males?",
+    "a": "Males have one X; recessive shows with single allele.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q70: What is meiosis for? (variant 6)",
+    "a": "Halving chromosome number to form gametes.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q71: What is a pedigree chart for? (variant 44)",
+    "a": "Tracing inheritance patterns through generations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q72: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q73: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 28)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q74: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q75: What is a recessive allele?",
+    "a": "Expressed only when homozygous.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q76: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 23)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q77: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q78: What is genetic drift?",
+    "a": "Random changes in allele frequencies, especially in small populations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q79: What is genotype vs phenotype? (variant 47)",
+    "a": "Genetic makeup vs observable characteristics.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q80: What is meiosis for?",
+    "a": "Halving chromosome number to form gametes.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q81: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 21)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q82: What is independent assortment?",
+    "a": "Random orientation of homologous pairs in meiosis I.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q83: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 9)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q84: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 33)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q85: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 40)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q86: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive? (variant 17)",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q87: What is artificial selection? (variant 38)",
+    "a": "Human‑directed breeding for desired traits.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q88: What is a pedigree chart for?",
+    "a": "Tracing inheritance patterns through generations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q89: Two heterozygous parents (Aa × Aa) have a child. Probability the child is homozygous recessive?",
+    "a": "25%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q90: What is a test cross used for?",
+    "a": "Determine unknown genotype using a homozygous recessive.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q91: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son?",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q92: What is artificial selection? (variant 8)",
+    "a": "Human‑directed breeding for desired traits.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q93: What is genetic drift? (variant 10)",
+    "a": "Random changes in allele frequencies, especially in small populations.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q94: Why does inbreeding increase homozygosity? (variant 18)",
+    "a": "Related individuals share alleles, reducing heterozygosity.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q95: What is artificial selection? (variant 1)",
+    "a": "Human‑directed breeding for desired traits.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q96: What is speciation?",
+    "a": "Evolution of new species via reproductive isolation.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q97: What is a gene?",
+    "a": "A DNA sequence that codes for a polypeptide.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q98: What is an allele? (variant 13)",
+    "a": "Different version of the same gene.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q99: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 26)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Inheritance, variation and evolution Q100: A sex‑linked recessive on the X chromosome is carried by a heterozygous mother. Probability an affected son? (variant 11)",
+    "a": "50%.",
+    "cat": "Inheritance, variation and evolution"
+  },
+  {
+    "q": "Key ideas Q1: A micrograph shows an image of 40 mm for an object of 100 µm. What’s the magnification? (variant 40)",
+    "a": "×400.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q2: What is a systematic error?",
+    "a": "A consistent bias shifting all measurements.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q3: A rate increases from 45 to 58. What is the percentage increase? (variant 39)",
+    "a": "28.9%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q4: A rate increases from 50 to 62. What is the percentage increase? (variant 8)",
+    "a": "24.0%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q5: Why draw best‑fit lines for scatter data? (variant 36)",
+    "a": "Reveal overall relationship trends.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q6: A micrograph shows an image of 15 mm for an object of 50 µm. What’s the magnification?",
+    "a": "×300.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q7: What is a control group? (variant 28)",
+    "a": "Baseline comparison without the treatment.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q8: A student increases sample size; the confidence interval shrinks. Why?",
+    "a": "Standard error decreases with n.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q9: A micrograph shows an image of 40 mm for an object of 100 µm. What’s the magnification?",
+    "a": "×400.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q10: Why draw best‑fit lines for scatter data?",
+    "a": "Reveal overall relationship trends.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q11: A micrograph shows an image of 25 mm for an object of 200 µm. What’s the magnification? (variant 18)",
+    "a": "×125.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q12: A rate increases from 26 to 31. What is the percentage increase?",
+    "a": "19.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q13: A micrograph shows an image of 15 mm for an object of 200 µm. What’s the magnification?",
+    "a": "×75.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q14: A student increases sample size; the confidence interval shrinks. Why? (variant 17)",
+    "a": "Standard error decreases with n.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q15: A micrograph shows an image of 25 mm for an object of 200 µm. What’s the magnification? (variant 3)",
+    "a": "×125.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q16: Convert 3.2 mm to µm.",
+    "a": "3200 µm.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q17: A graph of reaction rate vs substrate plateaus. Interpretation?",
+    "a": "Enzyme saturation or other limiting factor.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q18: A micrograph shows an image of 40 mm for an object of 50 µm. What’s the magnification? (variant 16)",
+    "a": "×800.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q19: A micrograph shows an image of 40 mm for an object of 200 µm. What’s the magnification?",
+    "a": "×200.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q20: Define uncertainty in measurement. (variant 30)",
+    "a": "Range within which the true value lies.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q21: How to improve precision of a mean?",
+    "a": "Increase sample size and reduce random error.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q22: What variable goes on the x‑axis? (variant 14)",
+    "a": "Independent variable.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q23: A rate increases from 48 to 64. What is the percentage increase?",
+    "a": "33.3%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q24: Why include replicates in experiments? (variant 27)",
+    "a": "Reduce impact of anomalous results.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q25: Repeated readings are similar but all too high. Describe errors. (variant 11)",
+    "a": "Precise but inaccurate due to systematic error.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q26: A micrograph shows an image of 25 mm for an object of 200 µm. What’s the magnification?",
+    "a": "×125.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q27: What is reliability improved by?",
+    "a": "Repeats and averaging.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q28: A dataset is skewed by a few extreme values. Which central tendency is more robust? (variant 12)",
+    "a": "Median.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q29: Why use a calibration curve? (variant 25)",
+    "a": "Relate instrument response to known standards.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q30: Why are outliers sometimes excluded?",
+    "a": "They may be due to error and distort analysis.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q31: What is a hypothesis?",
+    "a": "Testable statement predicting an outcome.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q32: A dataset is skewed by a few extreme values. Which central tendency is more robust?",
+    "a": "Median.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q33: A micrograph shows an image of 40 mm for an object of 100 µm. What’s the magnification? (variant 31)",
+    "a": "×400.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q34: A dataset is skewed by a few extreme values. Which central tendency is more robust? (variant 38)",
+    "a": "Median.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q35: A rate increases from 26 to 51. What is the percentage increase?",
+    "a": "96.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q36: What is a control group? (variant 22)",
+    "a": "Baseline comparison without the treatment.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q37: How to estimate uncertainty for a ruler with 1 mm markings?",
+    "a": "±0.5 mm.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q38: A micrograph shows an image of 40 mm for an object of 50 µm. What’s the magnification? (variant 47)",
+    "a": "×800.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q39: A micrograph shows an image of 40 mm for an object of 50 µm. What’s the magnification? (variant 43)",
+    "a": "×800.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q40: A scale reads +0.2 g when empty. What error does this indicate? (variant 35)",
+    "a": "Zero error (systematic).",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q41: A rate increases from 34 to 42. What is the percentage increase? (variant 49)",
+    "a": "23.5%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q42: A rate increases from 45 to 58. What is the percentage increase?",
+    "a": "28.9%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q43: Why are results reproducible important?",
+    "a": "Independent confirmation increases reliability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q44: Define resolution of an instrument.",
+    "a": "Smallest detectable change.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q45: A rate increases from 26 to 51. What is the percentage increase? (variant 13)",
+    "a": "96.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q46: A scale reads +0.2 g when empty. What error does this indicate?",
+    "a": "Zero error (systematic).",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q47: What is peer review for?",
+    "a": "Quality control before publication.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q48: What is a control variable?",
+    "a": "Factor kept constant to ensure a fair test.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q49: Why are results reproducible important? (variant 20)",
+    "a": "Independent confirmation increases reliability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q50: Why include replicates in experiments?",
+    "a": "Reduce impact of anomalous results.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q51: A rate increases from 34 to 42. What is the percentage increase? (variant 46)",
+    "a": "23.5%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q52: State the magnification formula.",
+    "a": "Magnification = image size ÷ real size.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q53: A rate increases from 34 to 42. What is the percentage increase?",
+    "a": "23.5%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q54: A rate increases from 53 to 65. What is the percentage increase?",
+    "a": "22.6%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q55: A rate increases from 26 to 51. What is the percentage increase? (variant 7)",
+    "a": "96.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q56: Two variables increase together non‑linearly. Best simple test? (variant 50)",
+    "a": "Calculate correlation (e.g., Spearman/Pearson) with scatter plot.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q57: A rate increases from 22 to 36. What is the percentage increase? (variant 44)",
+    "a": "63.6%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q58: A calibration curve is non‑linear at high concentrations. What should be done?",
+    "a": "Dilute samples into linear range.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q59: Why use a calibration curve?",
+    "a": "Relate instrument response to known standards.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q60: A micrograph shows an image of 15 mm for an object of 100 µm. What’s the magnification?",
+    "a": "×150.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q61: Why are outliers sometimes excluded? (variant 26)",
+    "a": "They may be due to error and distort analysis.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q62: What is a control group?",
+    "a": "Baseline comparison without the treatment.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q63: What is peer review for? (variant 10)",
+    "a": "Quality control before publication.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q64: A rate increases from 35 to 56. What is the percentage increase? (variant 19)",
+    "a": "60.0%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q65: A micrograph shows an image of 40 mm for an object of 50 µm. What’s the magnification? (variant 29)",
+    "a": "×800.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q66: Why label units on axes and tables?",
+    "a": "Ensures clarity and correct interpretation.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q67: An experiment lacks a control group. What risk increases?",
+    "a": "Confounding variables causing false conclusions.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q68: A graph of reaction rate vs substrate plateaus. Interpretation? (variant 32)",
+    "a": "Enzyme saturation or other limiting factor.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q69: A micrograph shows an image of 40 mm for an object of 200 µm. What’s the magnification?",
+    "a": "×200.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q70: A micrograph shows an image of 15 mm for an object of 50 µm. What’s the magnification? (variant 15)",
+    "a": "×300.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q71: Two variables increase together non‑linearly. Best simple test?",
+    "a": "Calculate correlation (e.g., Spearman/Pearson) with scatter plot.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q72: Convert 3.2 mm to µm. (variant 34)",
+    "a": "3200 µm.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q73: A rate increases from 48 to 64. What is the percentage increase? (variant 42)",
+    "a": "33.3%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q74: A rate increases from 22 to 36. What is the percentage increase?",
+    "a": "63.6%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q75: A rate increases from 34 to 42. What is the percentage increase? (variant 21)",
+    "a": "23.5%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q76: Define uncertainty in measurement.",
+    "a": "Range within which the true value lies.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q77: What variable goes on the y‑axis?",
+    "a": "Dependent variable.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q78: A rate increases from 50 to 62. What is the percentage increase?",
+    "a": "24.0%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q79: Define resolution of an instrument. (variant 37)",
+    "a": "Smallest detectable change.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q80: Define accuracy vs precision. (variant 9)",
+    "a": "Accuracy = closeness to true value; precision = repeatability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q81: A graph of reaction rate vs substrate plateaus. Interpretation? (variant 45)",
+    "a": "Enzyme saturation or other limiting factor.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q82: Define accuracy vs precision. (variant 24)",
+    "a": "Accuracy = closeness to true value; precision = repeatability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q83: An experiment lacks a control group. What risk increases? (variant 41)",
+    "a": "Confounding variables causing false conclusions.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q84: A rate increases from 35 to 56. What is the percentage increase?",
+    "a": "60.0%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q85: A rate increases from 49 to 55. What is the percentage increase?",
+    "a": "12.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q86: Convert 3.2 mm to µm. (variant 5)",
+    "a": "3200 µm.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q87: A micrograph shows an image of 15 mm for an object of 50 µm. What’s the magnification?",
+    "a": "×300.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q88: Define accuracy vs precision. (variant 6)",
+    "a": "Accuracy = closeness to true value; precision = repeatability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q89: What variable goes on the x‑axis?",
+    "a": "Independent variable.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q90: A micrograph shows an image of 40 mm for an object of 50 µm. What’s the magnification?",
+    "a": "×800.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q91: Define accuracy vs precision. (variant 2)",
+    "a": "Accuracy = closeness to true value; precision = repeatability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q92: A rate increases from 26 to 51. What is the percentage increase? (variant 1)",
+    "a": "96.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q93: A micrograph shows an image of 40 mm for an object of 100 µm. What’s the magnification?",
+    "a": "×400.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q94: Why are outliers sometimes excluded? (variant 33)",
+    "a": "They may be due to error and distort analysis.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q95: Repeated readings are similar but all too high. Describe errors.",
+    "a": "Precise but inaccurate due to systematic error.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q96: Define accuracy vs precision.",
+    "a": "Accuracy = closeness to true value; precision = repeatability.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q97: What is a control variable? (variant 48)",
+    "a": "Factor kept constant to ensure a fair test.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q98: A micrograph shows an image of 40 mm for an object of 200 µm. What’s the magnification? (variant 4)",
+    "a": "×200.0.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q99: Measurements scatter widely around the true value. Describe accuracy and precision.",
+    "a": "Accurate on average but imprecise.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Key ideas Q100: A rate increases from 26 to 51. What is the percentage increase? (variant 23)",
+    "a": "96.2%.",
+    "cat": "Key ideas"
+  },
+  {
+    "q": "Organisation Q1: Why does chewing increase enzyme efficiency?",
+    "a": "Increases substrate SA; mixes with saliva amylase.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q2: After severe blood loss, why is blood pressure low?",
+    "a": "Reduced blood volume lowers venous return and cardiac output.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q3: An exchange surface has area 50 cm² and thickness 2 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q4: Why do veins have valves but arteries usually do not?",
+    "a": "Veins operate at low pressure; prevent backflow.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q5: Which blood component carries oxygen?",
+    "a": "Haemoglobin in red blood cells.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q6: Cutting a ring of bark removes phloem. What happens below the ring, and why? (variant 35)",
+    "a": "Sugars accumulate below; translocation is blocked.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q7: What adaptation of alveoli speeds diffusion?",
+    "a": "Large surface area and thin walls.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q8: Why does eating a fatty meal not increase blood glucose directly?",
+    "a": "Lipids are not converted to glucose immediately; digested to fatty acids/glycerol.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q9: Why does boiling bile remove its digestive effect?",
+    "a": "Bile salts are denatured/disrupted; less emulsification.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q10: A student's heart rate rises from 55 bpm at rest to 131 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q11: An exchange surface has area 50 cm² and thickness 1 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q12: A patient has narrowed coronary arteries. What condition is likely and why? (variant 12)",
+    "a": "Coronary heart disease—reduced blood flow to myocardium.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q13: What is translocation?",
+    "a": "Movement of sugars in phloem from sources to sinks.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q14: What is the function of platelets?",
+    "a": "Blood clotting.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q15: An exchange surface has area 100 cm² and thickness 0.5 mm. Which change most increases diffusion rate according to Fick's law? (variant 37)",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q16: Which chamber of the heart pumps to the body? (variant 11)",
+    "a": "Left ventricle.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q17: A student blocks the pancreatic duct. Which digestion is most affected?",
+    "a": "Lipids and proteins—reduced pancreatic lipase and proteases.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q18: Which chamber of the heart pumps to the body?",
+    "a": "Left ventricle.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q19: After severe blood loss, why is blood pressure low? (variant 23)",
+    "a": "Reduced blood volume lowers venous return and cardiac output.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q20: How do capillaries suit their function?",
+    "a": "Thin walls and narrow lumen for exchange.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q21: A student's heart rate rises from 56 bpm at rest to 102 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 26)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q22: An exchange surface has area 200 cm² and thickness 0.5 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q23: Why are enzymes substrate specific?",
+    "a": "Active site complementary to substrate.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q24: What is the function of the pacemaker (SAN)?",
+    "a": "Initiates heart contractions.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q25: What is the advantage of a double circulatory system?",
+    "a": "Higher pressure to systemic circuit; efficient oxygen delivery.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q26: A student's heart rate rises from 61 bpm at rest to 105 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 14)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q27: Cutting a ring of bark removes phloem. What happens below the ring, and why? (variant 27)",
+    "a": "Sugars accumulate below; translocation is blocked.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q28: What is transpiration?",
+    "a": "Evaporation of water from leaves driving xylem flow.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q29: A student's heart rate rises from 65 bpm at rest to 143 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q30: Which enzyme digests lipids? (variant 6)",
+    "a": "Lipase.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q31: Where is bile produced and stored?",
+    "a": "Produced in liver; stored in gallbladder.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q32: Why are enzymes substrate specific? (variant 20)",
+    "a": "Active site complementary to substrate.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q33: What is the role of bile in digestion? (variant 15)",
+    "a": "Emulsifies lipids to increase surface area.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q34: Which enzyme digests lipids?",
+    "a": "Lipase.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q35: Which blood vessels carry blood away from the heart?",
+    "a": "Arteries.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q36: Which enzyme digests proteins into peptides?",
+    "a": "Protease (e.g., pepsin, trypsin).",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q37: An athlete’s stroke volume increases with training. What is the effect on resting heart rate?",
+    "a": "Resting heart rate decreases.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q38: An exchange surface has area 50 cm² and thickness 0.5 mm. Which change most increases diffusion rate according to Fick's law? (variant 13)",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q39: An exchange surface has area 200 cm² and thickness 1 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q40: Cutting a ring of bark removes phloem. What happens below the ring, and why? (variant 16)",
+    "a": "Sugars accumulate below; translocation is blocked.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q41: What is the role of bile in digestion? (variant 38)",
+    "a": "Emulsifies lipids to increase surface area.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q42: A student's heart rate rises from 65 bpm at rest to 143 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 8)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q43: An exchange surface has area 100 cm² and thickness 1 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q44: Why does heart rate rise during exercise?",
+    "a": "Greater oxygen/glucose delivery and CO₂ removal.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q45: A student's heart rate rises from 67 bpm at rest to 132 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q46: Why do xerophytes have sunken stomata?",
+    "a": "Reduce water loss by lowering transpiration.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q47: What structure increases surface area in the small intestine?",
+    "a": "Villi and microvilli.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q48: A patient has narrowed coronary arteries. What condition is likely and why? (variant 3)",
+    "a": "Coronary heart disease—reduced blood flow to myocardium.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q49: Which vessels transport water in plants?",
+    "a": "Xylem.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q50: A student's heart rate rises from 56 bpm at rest to 102 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q51: Which blood vessels carry blood away from the heart? (variant 25)",
+    "a": "Arteries.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q52: An exchange surface has area 50 cm² and thickness 2 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q53: An exchange surface has area 200 cm² and thickness 1 mm. Which change most increases diffusion rate according to Fick's law? (variant 33)",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q54: Which enzyme digests starch into maltose?",
+    "a": "Amylase.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q55: Why are enzymes substrate specific? (variant 36)",
+    "a": "Active site complementary to substrate.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q56: An exchange surface has area 50 cm² and thickness 0.5 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q57: Where does gas exchange occur in the lungs?",
+    "a": "Alveoli.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q58: Which side of the heart has thicker walls and why? (variant 39)",
+    "a": "Left ventricle—pumps at higher pressure.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q59: An exchange surface has area 50 cm² and thickness 2 mm. Which change most increases diffusion rate according to Fick's law? (variant 30)",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q60: Which side of the heart has thicker walls and why?",
+    "a": "Left ventricle—pumps at higher pressure.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q61: A student's heart rate rises from 67 bpm at rest to 113 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q62: An exchange surface has area 100 cm² and thickness 0.5 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q63: Where does gas exchange occur in the lungs? (variant 31)",
+    "a": "Alveoli.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q64: Which organ pumps blood around the body?",
+    "a": "Heart.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q65: A patient has narrowed coronary arteries. What condition is likely and why? (variant 2)",
+    "a": "Coronary heart disease—reduced blood flow to myocardium.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q66: What happens to guard cells to open stomata?",
+    "a": "They become turgid due to K⁺ uptake.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q67: A student's heart rate rises from 67 bpm at rest to 110 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q68: Where is bile produced and stored? (variant 28)",
+    "a": "Produced in liver; stored in gallbladder.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q69: Which enzyme digests lipids? (variant 21)",
+    "a": "Lipase.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q70: A student's heart rate rises from 67 bpm at rest to 113 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 29)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q71: Which vessels transport sugars in plants?",
+    "a": "Phloem.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q72: Which chamber of the heart pumps to the body? (variant 34)",
+    "a": "Left ventricle.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q73: What is the role of bile in digestion?",
+    "a": "Emulsifies lipids to increase surface area.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q74: A student's heart rate rises from 60 bpm at rest to 107 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q75: Which blood vessels carry blood away from the heart? (variant 17)",
+    "a": "Arteries.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q76: An exchange surface has area 200 cm² and thickness 1 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q77: A student's heart rate rises from 61 bpm at rest to 105 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q78: Which vessels transport sugars in plants? (variant 18)",
+    "a": "Phloem.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q79: A student's heart rate rises from 61 bpm at rest to 105 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 32)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q80: Cutting a ring of bark removes phloem. What happens below the ring, and why?",
+    "a": "Sugars accumulate below; translocation is blocked.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q81: Why does phloem require energy? (variant 1)",
+    "a": "Active loading and transport of sucrose.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q82: A plant kept in still, dry air wilts quickly. Why?",
+    "a": "High transpiration rate exceeds water uptake.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q83: An exchange surface has area 100 cm² and thickness 0.5 mm. Which change most increases diffusion rate according to Fick's law? (variant 24)",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q84: What is the function of valves in the heart and veins?",
+    "a": "Prevent backflow of blood.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q85: A student's heart rate rises from 61 bpm at rest to 129 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q86: Where is bile produced and stored? (variant 4)",
+    "a": "Produced in liver; stored in gallbladder.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q87: What adaptation of alveoli speeds diffusion? (variant 7)",
+    "a": "Large surface area and thin walls.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q88: How does smoking damage gas exchange?",
+    "a": "Destroys cilia and alveoli; reduces SA.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q89: Why does phloem require energy?",
+    "a": "Active loading and transport of sucrose.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q90: An exchange surface has area 50 cm² and thickness 1 mm. Which change most increases diffusion rate according to Fick's law?",
+    "a": "Increase area and decrease thickness.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q91: A patient has narrowed coronary arteries. What condition is likely and why?",
+    "a": "Coronary heart disease—reduced blood flow to myocardium.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q92: Why does a high fever impair digestion?",
+    "a": "Enzymes denature; reduced activity.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q93: Cutting a ring of bark removes phloem. What happens below the ring, and why? (variant 19)",
+    "a": "Sugars accumulate below; translocation is blocked.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q94: A student's heart rate rises from 55 bpm at rest to 131 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 40)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q95: A student's heart rate rises from 61 bpm at rest to 105 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 22)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q96: A student's heart rate rises from 70 bpm at rest to 150 bpm in exercise. What variable in cardiac output also typically rises besides heart rate?",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q97: Where does gas exchange occur in the lungs? (variant 5)",
+    "a": "Alveoli.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q98: A student's heart rate rises from 65 bpm at rest to 143 bpm in exercise. What variable in cardiac output also typically rises besides heart rate? (variant 10)",
+    "a": "Stroke volume.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q99: Why does heart rate rise during exercise? (variant 9)",
+    "a": "Greater oxygen/glucose delivery and CO₂ removal.",
+    "cat": "Organisation"
+  },
+  {
+    "q": "Organisation Q100: What is the function of lignin in xylem?",
+    "a": "Strengthens and waterproofs vessels.",
+    "cat": "Organisation"
+  }
+];
+
+// 一些通用干擾選項，用於數量不足時補齊
+const genericDistractors=[
+  "In the nucleus.","In mitochondria.","By diffusion.","They store genetic material.","They catalyse lipid synthesis.",
+  "The pancreas.","The lungs.","Protease.","Lipase.","They produce antibodies.",
+  "They replicate independently of the nucleus.","They increase surface area.","They control cell division.",
+  "They transport water through xylem.","It occurs in the cytoplasm.","A measure of population size."
+];
+
+// Fisher-Yates shuffle
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+// 由題庫自動產生 MC 選項（每題 4 選 1，含 1 正確 + 最多 3 來自同類別/全局干擾）
+function buildMC(questions){
+  const byCat = {};
+  questions.forEach((it)=>{(byCat[it.cat]??=([])).push(it)});
+
+  return questions.map((item)=>{
+    const distractors=new Set();
+    // 從同類別的其他題目的答案抽干擾
+    (byCat[item.cat]||[]).forEach((o)=>{if(o!==item) distractors.add(o.a)});
+    // 若不足，再從全題庫答案抽取
+    questions.forEach((o)=>{if(o!==item && distractors.size<6) distractors.add(o.a)});
+    // 若仍不足，用通用干擾補
+    genericDistractors.forEach((g)=>{if(distractors.size<12) distractors.add(g)});
+
+    const pool=Array.from(distractors).filter(tx=>tx!==item.a);
+    shuffle(pool);
+    const options = shuffle([item.a, ...pool.slice(0,3)]);
+    return {...item, options};
+  });
+}
+
+// 狀態
+let allQuestions = buildMC(baseQuestions);
+let filtered = allQuestions.slice();
+let index=0;
+let score=0;
+let answered=false;
+
+// 元素
+const questionText=document.getElementById("questionText");
+const optionsEl=document.getElementById("options");
+const explainEl=document.getElementById("explain");
+const counterEl=document.getElementById("counter");
+const counter2El=document.getElementById("counter2");
+const catBadge=document.getElementById("catBadge");
+const scoreText=document.getElementById("scoreText");
+const progressBar=document.getElementById("progressBar");
+const filterSelect=document.getElementById("categoryFilter");
+const prevBtn=document.getElementById("prevBtn");
+const nextBtn=document.getElementById("nextBtn");
+const shuffleBtn=document.getElementById("shuffleBtn");
+const resetBtn=document.getElementById("resetBtn");
+
+// 工具
+function updateCounters(){
+  const total=filtered.length;
+  const idx=index+1;
+  counterEl.textContent = total ? `${idx} / ${total}` : "0 / 0";
+  counter2El.textContent = counterEl.textContent;
+  const pct = total? Math.round((idx/total)*100) : 0;
+  progressBar.style.width = pct + "%";
+}
+function setBadge(){
+  catBadge.textContent = (filterSelect.value==="all"?"全部":filterSelect.value);
+}
+function render(){
+  if(!filtered.length){
+    questionText.textContent="此分類目前沒有題目。請選擇其他分類。";
+    optionsEl.innerHTML="";
+    explainEl.classList.remove("show");
+    updateCounters();
+    setBadge();
+    return;
+  }
+  const item=filtered[index];
+  questionText.textContent=item.q;
+  optionsEl.innerHTML="";
+  answered=false;
+  explainEl.textContent=""; explainEl.classList.remove("show");
+  item.options.forEach((optText,i)=>{
+    const id=`opt_${index}_${i}`;
+    const opt=document.createElement("label");
+    opt.className="opt";
+    opt.setAttribute("role","button");
+    opt.innerHTML=`<input type="radio" name="opt" id="${id}" style="transform:translateY(2px)" /> <span>${optText}</span>`;
+    opt.addEventListener("click",()=>choose(optText,opt,item));
+    optionsEl.appendChild(opt);
+  });
+  updateCounters();
+  setBadge();
+}
+
+function choose(optText,optEl,item){
+  if(answered) return;
+  answered=true;
+  const correct = (optText===item.a);
+  if(correct){ score++; scoreText.textContent=score; }
+  // 標示選取/正確
+  [...optionsEl.children].forEach((el)=>{
+    const text = el.querySelector("span").textContent;
+    if(text===item.a){ el.classList.add("correct"); }
+    if(el===optEl && !correct){ el.classList.add("wrong"); }
+  });
+  explainEl.textContent = `正確答案：${item.a}`;
+  explainEl.classList.add("show");
+}
+
+function applyFilter(){
+  const v=filterSelect.value;
+  filtered = (v==="all") ? allQuestions.slice() : allQuestions.filter(x=>x.cat===v);
+  index=0; render();
+}
+
+// 導覽
+function nextQ(){ if(!filtered.length) return; index=(index+1)%filtered.length; render(); }
+function prevQ(){ if(!filtered.length) return; index=(index-1+filtered.length)%filtered.length; render(); }
+function reshuffle(){
+  // 重新打亂題目與每題選項
+  filtered = shuffle(filtered);
+  filtered = filtered.map(q=>({...q, options: shuffle(q.options.slice())}));
+  index=0; render();
+}
+function resetScore(){ score=0; scoreText.textContent=score; }
+
+// 事件
+filterSelect.addEventListener("change",applyFilter);
+nextBtn.addEventListener("click", (e)=>{e.stopPropagation(); nextQ();});
+prevBtn.addEventListener("click", (e)=>{e.stopPropagation(); prevQ();});
+shuffleBtn.addEventListener("click",(e)=>{e.stopPropagation(); reshuffle();});
+resetBtn.addEventListener("click",(e)=>{e.stopPropagation(); resetScore();});
+
+// 鍵盤
+document.addEventListener("keydown",(e)=>{
+  const tag=(e.target&&e.target.tagName)||"";
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT") return;
+  if(e.key==="ArrowRight") nextQ();
+  else if(e.key==="ArrowLeft") prevQ();
+  else if((e.key||"").toLowerCase()==="s") reshuffle();
+  else if((e.key||"").toLowerCase()==="r") resetScore();
+});
+
+// 初始化
+applyFilter();
+</script>
+</body>
+</html>
