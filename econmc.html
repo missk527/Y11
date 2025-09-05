@@ -1,34 +1,138 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GCSE Economics MC Quiz (1500 Qs)</title>
+  <title>GCSE Economics MCQ Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
-    h1, h2 { text-align: center; }
-    #quiz { max-width: 800px; margin: auto; }
-    .question { background: #fff; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-    .options label { display: block; margin: 6px 0; cursor: pointer; }
-    .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-    .btn-primary { background: #4CAF50; color: white; }
-    .btn-secondary { background: #2196F3; color: white; }
-    #score { font-weight: bold; margin-top: 20px; text-align: center; }
+    :root {
+      --bg: #f6fff8;
+      --card: #ffffff;
+      --text: #163020;
+      --muted: #5e7f65;
+      --primary: #2e7d32;
+      --primary-dark: #1b5e20;
+      --accent: #a5d6a7;
+      --border: #cde9cf;
+      --ok: #1e7e34;
+      --bad: #b00020;
+      --okbg: #e8f5e9;
+      --badbg: #ffebee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    }
+    header {
+      padding: 24px; text-align: center; background: linear-gradient(135deg, var(--accent), #e8f5e9);
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { margin: 0 0 6px 0; font-weight: 800; color: var(--primary-dark); }
+    p.sub { margin: 0; color: var(--muted); }
+    .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(46,125,50,0.05); padding: 20px;
+    }
+    .grid { display: grid; gap: 16px; }
+    @media (min-width: 720px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    label.ck { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    .controls { display:flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    input[type=number], select {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+      background: #fff; color: var(--text);
+      min-width: 120px;
+    }
+    .btn {
+      background: var(--primary); color: #fff; border: none; padding: 10px 16px;
+      border-radius: 10px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 6px rgba(46,125,50,0.2);
+    }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn.secondary { background: #e8f5e9; color: var(--primary-dark); }
+    #quiz-box { display:none; }
+    .question { font-size: 1.15rem; margin-bottom: 14px; font-weight: 700; }
+    .options label { display: block; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: background .2s ease; }
+    .options input { margin-right: 8px; }
+    .bar-wrap { height: 10px; background: #e8f5e9; border-radius: 99px; overflow: hidden; border:1px solid var(--border); }
+    .bar { height: 100%; width:0%; background: linear-gradient(90deg, var(--primary), #66bb6a); transition: width .25s ease; }
+    .meta { color: var(--muted); font-size: .9rem; }
+    .row { display:flex; align-items:center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+    footer { text-align:center; color: var(--muted); padding: 24px; }
+    .correct { background: var(--okbg); border-color: var(--ok); }
+    .wrong { background: var(--badbg); border-color: var(--bad); }
+    #feedback { margin-top: 10px; font-weight: 600; }
+    #feedback.ok { color: var(--ok); }
+    #feedback.bad { color: var(--bad); }
   </style>
 </head>
 <body>
-  <h1>GCSE Economics Quiz</h1>
-  <div style="text-align:center;">
-    <button class="btn btn-primary" onclick="startQuiz()">Start Quiz</button>
+  <header>
+    <h1>GCSE Economics MCQ Quiz</h1>
+    <p class="sub"> • Pick topics • Choose question count • Random selection • Per-question feedback</p>
+  </header>
+
+  <div class="container">
+    <!-- Setup -->
+    <div id="setup" class="card grid">
+      <div class="grid grid-2">
+        <div>
+          <h3>Select Topic Range(s)</h3>
+          <label class="ck"><input type="checkbox" value="1-300" checked> Topic 1: Introduction (Q1–300)</label>
+          <label class="ck"><input type="checkbox" value="301-600" checked> Topic 2: How Markets Work (Q301–600)</label>
+          <label class="ck"><input type="checkbox" value="601-900" checked> Topic 3: How the Economy Works (Q601–900)</label>
+          <label class="ck"><input type="checkbox" value="901-1200" checked> Topic 4: Role of Government (Q901–1200)</label>
+          <label class="ck"><input type="checkbox" value="1201-1500" checked> Topic 5: The Global Economy (Q1201–1500)</label>
+        </div>
+        <div>
+          <h3>Quiz Options</h3>
+          <div class="controls">
+            <label>Questions:
+              <input id="num-questions" type="number" value="20" min="1" max="200">
+            </label>
+            <label>Order:
+              <select id="order">
+                <option value="random" selected>Random</option>
+                <option value="sequential">Sequential</option>
+              </select>
+            </label>
+          </div>
+          <div class="controls" style="margin-top:12px;">
+            <button class="btn" id="start-btn">Start Quiz</button>
+            <button class="btn secondary" id="select-all-btn">Select All</button>
+            <button class="btn secondary" id="clear-btn">Clear</button>
+          </div>
+          <p class="meta">The question bank remains unchanged. Your selection only filters which subset is used.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz -->
+    <div id="quiz-box" class="card">
+      <div class="row">
+        <div class="meta"><span id="counter">Question 1</span></div>
+        <div style="flex:1"></div>
+        <div class="meta">Score: <b id="score">0</b></div>
+      </div>
+      <div class="bar-wrap" style="margin:10px 0 16px 0;"><div id="bar" class="bar"></div></div>
+      <div id="question-container" class="question"></div>
+      <div id="options-container" class="options"></div>
+      <div id="feedback" class="meta"></div>
+      <div class="row">
+        <button id="next-btn" class="btn">Check</button>
+        <button id="restart-btn" class="btn secondary" style="display:none;">Restart</button>
+      </div>
+    </div>
   </div>
-  <div id="quiz"></div>
-  <div id="score"></div>
+
+  <footer>© GCSE Economics Quiz • Green theme</footer>
 
   <script>
     // ================================
-    // Question Bank Placeholder
+    // Question Bank (embedded unchanged from your original file)
     // ================================
-    const questionBank = [
-      // ===============================
+    const questionBank = [// ===============================
 // Topic 1: Introduction to Economics (Q1–Q100)
 // ===============================
 {q: "What is the basic economic problem?", a: "Scarcity", o: ["Scarcity", "Abundance", "Infinite resources", "Excess wealth"]},
@@ -1294,56 +1398,147 @@
 {q: "Balance of payments crisis happens when…", a: "Country cannot finance imports/debt", o: ["Country cannot finance imports/debt", "Scarcity removed", "Exports rise too much", "No impact"]},
 {q: "Currency crisis occurs when…", a: "Sharp depreciation of currency", o: ["Sharp depreciation of currency", "Scarcity removed", "Strong appreciation", "Fixed rates always"]},
 {q: "Debt crisis occurs when…", a: "Country cannot repay debt", o: ["Country cannot repay debt", "Scarcity removed", "Exports fall", "Imports rise"]},
-{q: "Structural adjustment programmes are…", a: "IMF/World Bank reforms for loans", o: ["IMF/World Bank reforms for loans", "Scarcity removed", "Aid with no conditions", "Always debt relief"]},
+{q: "Structural adjustment programmes are…", a: "IMF/World Bank reforms for loans", o: ["IMF/World Bank reforms for loans", "Scarcity removed", "Aid with no conditions", "Always debt relief"]},];
 
-    ];
-
-    // ================================
-    // Quiz Engine
-    // ================================
+    // ===== Logic =====
+    let selectedQuestions = [];
+    let currentIndex = 0;
     let score = 0;
+    let checked = false; // whether current question has been checked
+
+    function selectAll(val) {
+      document.querySelectorAll('#setup input[type=checkbox]').forEach(cb => cb.checked = val);
+    }
 
     function startQuiz() {
-      score = 0;
-      const quizDiv = document.getElementById("quiz");
-      quizDiv.innerHTML = "";
-      
-      questionBank.forEach((qObj, idx) => {
-        const qDiv = document.createElement("div");
-        qDiv.className = "question";
-        qDiv.innerHTML = `<p><b>Q${idx+1}:</b> ${qObj.q}</p>`;
-        
-        const optsDiv = document.createElement("div");
-        optsDiv.className = "options";
+      const checks = Array.from(document.querySelectorAll('#setup input[type=checkbox]:checked'));
+      if (checks.length === 0) { alert('Please select at least one topic range.'); return; }
+      const order = document.getElementById('order').value;
+      const num = Math.max(1, parseInt(document.getElementById('num-questions').value) || 10);
 
-        qObj.o.forEach(opt => {
-          const label = document.createElement("label");
-          const radio = document.createElement("input");
-          radio.type = "radio";
-          radio.name = "q" + idx;
-          radio.value = opt;
-          radio.onchange = () => {
-            if(radio.value === qObj.a) {
-              score++;
-            }
-          };
-          label.appendChild(radio);
-          label.append(" " + opt);
-          optsDiv.appendChild(label);
-        });
-        qDiv.appendChild(optsDiv);
-        quizDiv.appendChild(qDiv);
+      // Build filtered list
+      let pool = [];
+      checks.forEach(cb => {
+        const range = cb.value.split('-');
+        const min = parseInt(range[0], 10);
+        const max = parseInt(range[1], 10);
+        const slice = questionBank.slice(min-1, max);
+        pool = pool.concat(slice);
       });
 
-      const btn = document.createElement("button");
-      btn.innerText = "Submit Quiz";
-      btn.className = "btn btn-secondary";
-      btn.onclick = () => {
-        document.getElementById("score").innerText = 
-          `Your score: ${score} / ${questionBank.length}`;
-      };
-      quizDiv.appendChild(btn);
+      if (pool.length === 0) { alert('No questions found in selected ranges.'); return; }
+
+      if (order === 'random') {
+        pool = pool.sort(() => Math.random() - 0.5);
+      }
+
+      selectedQuestions = pool.slice(0, Math.min(num, pool.length));
+      currentIndex = 0; score = 0; checked = false;
+
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('quiz-box').style.display = 'block';
+      document.getElementById('score').textContent = score;
+      document.getElementById('bar').style.width = '0%';
+      document.getElementById('next-btn').textContent = 'Check';
+      showQuestion();
     }
+
+    function renderProgress() {
+      var pct = (currentIndex / selectedQuestions.length) * 100;
+      document.getElementById('bar').style.width = pct + '%';
+      document.getElementById('counter').textContent = "Question " + (currentIndex+1) + " of " + selectedQuestions.length;
+    }
+
+    function showQuestion() {
+      const q = selectedQuestions[currentIndex];
+      document.getElementById('question-container').textContent = q ? q.q : '';
+      let opts = "";
+      for (var i=0; i<q.o.length; i++) {
+        var opt = q.o[i];
+        opts += '<label><input type="radio" name="opt" value="' + opt.replace(/"/g, '&quot;') + '"> ' + opt + '</label>';
+      }
+      document.getElementById('options-container').innerHTML = opts;
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('feedback').className = 'meta';
+      checked = false;
+      renderProgress();
+    }
+
+    function checkAnswer() {
+      const q = selectedQuestions[currentIndex];
+      const chosen = document.querySelector('input[name="opt"]:checked');
+      if (!chosen) { alert('Please choose an answer'); return false; }
+
+      // Disable all inputs
+      document.querySelectorAll('input[name="opt"]').forEach(el => el.disabled = true);
+
+      // Highlight options
+      const labels = Array.from(document.querySelectorAll('#options-container label'));
+      labels.forEach(lb => {
+        const input = lb.querySelector('input');
+        if (input.value === q.a) {
+          lb.classList.add('correct');
+        }
+      });
+      if (chosen.value !== q.a) {
+        // mark wrong selection
+        const wrongLabel = chosen.closest('label');
+        if (wrongLabel) wrongLabel.classList.add('wrong');
+        document.getElementById('feedback').textContent = 'Incorrect. Correct answer: ' + q.a;
+        document.getElementById('feedback').className = 'meta bad';
+      } else {
+        score++;
+        document.getElementById('score').textContent = score;
+        document.getElementById('feedback').textContent = 'Correct!';
+        document.getElementById('feedback').className = 'meta ok';
+      }
+
+      checked = true;
+      document.getElementById('next-btn').textContent = (currentIndex === selectedQuestions.length - 1) ? 'Finish' : 'Next';
+      return true;
+    }
+
+    function nextQ() {
+      if (!checked) {
+        // First click: check and show correct answer
+        const ok = checkAnswer();
+        return;
+      }
+      // Second click: go to next
+      currentIndex++;
+      if (currentIndex < selectedQuestions.length) {
+        document.getElementById('next-btn').textContent = 'Check';
+        showQuestion();
+      } else {
+        endQuiz();
+      }
+    }
+
+    function endQuiz() {
+      document.getElementById('question-container').innerHTML = '<h2>Quiz Completed!</h2><p class="meta">Great work. Choose Restart to set another run.</p>';
+      document.getElementById('options-container').innerHTML = '';
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('next-btn').style.display = 'none';
+      document.getElementById('restart-btn').style.display = 'inline-block';
+      document.getElementById('bar').style.width = '100%';
+      document.getElementById('counter').textContent = 'Finished';
+    }
+
+    function restartQuiz() {
+      document.getElementById('quiz-box').style.display = 'none';
+      document.getElementById('setup').style.display = 'block';
+      document.getElementById('next-btn').style.display = 'inline-block';
+      document.getElementById('restart-btn').style.display = 'none';
+    }
+
+    // Wire up buttons after DOM loads
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('start-btn').addEventListener('click', startQuiz);
+      document.getElementById('select-all-btn').addEventListener('click', function(){ selectAll(true); });
+      document.getElementById('clear-btn').addEventListener('click', function(){ selectAll(false); });
+      document.getElementById('next-btn').addEventListener('click', nextQ);
+      document.getElementById('restart-btn').addEventListener('click', restartQuiz);
+    });
   </script>
 </body>
 </html>
