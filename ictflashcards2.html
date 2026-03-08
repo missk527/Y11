@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICT Revision App</title>
+<style>
+:root{
+--bg:#0e0220;
+--panel:#1b0f35;
+--panel2:#27124a;
+--accent:#b47cff;
+--accent2:#d3a6ff;
+--text:#f4edff;
+--muted:#c9b6ff;
+--border:rgba(200,160,255,.2);
+--shadow:0 20px 60px rgba(40,0,80,.6);
+}
+
+*{box-sizing:border-box}
+
+body{
+margin:0;
+font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+color:var(--text);
+background:radial-gradient(circle at 30% 20%, #2a0a4a 0%, #180530 45%, #0b0118 100%);
+min-height:100vh;
+animation:bgmove 18s ease infinite alternate;
+}
+
+@keyframes bgmove{
+0%{background-position:0% 0%}
+100%{background-position:100% 100%}
+}
+
+.wrap{
+max-width:1100px;
+margin:auto;
+padding:30px 20px 60px;
+}
+
+h1{margin:0 0 8px;font-size:2.2rem}
+.subtitle{color:var(--muted);margin-bottom:20px}
+
+.toolbar{
+display:grid;
+grid-template-columns:1.4fr 1fr 1fr 1fr auto;
+gap:10px;
+margin-bottom:20px;
+}
+
+input,select,button{
+padding:10px 12px;
+border-radius:12px;
+border:1px solid var(--border);
+background:var(--panel);
+color:var(--text);
+font-size:.9rem;
+}
+
+button{cursor:pointer;transition:.15s}
+button:hover{background:var(--panel2);transform:translateY(-1px)}
+
+.stats{
+display:flex;
+flex-wrap:wrap;
+gap:14px;
+color:var(--muted);
+margin-bottom:14px;
+font-size:.9rem;
+}
+
+.progressbox{
+border:1px solid var(--border);
+padding:12px 14px;
+border-radius:14px;
+background:rgba(255,255,255,.04);
+margin-bottom:22px;
+}
+
+.bar{
+height:12px;
+background:rgba(255,255,255,.06);
+border-radius:999px;
+overflow:hidden;
+}
+
+.barfill{
+height:100%;
+width:0%;
+background:linear-gradient(90deg,var(--accent),var(--accent2));
+transition:width .25s;
+}
+
+.center{
+display:flex;
+justify-content:center;
+}
+
+.flashcard{
+width:min(760px,95%);
+perspective:1200px;
+min-height:360px;
+}
+
+.inner{
+position:relative;
+width:100%;
+height:100%;
+min-height:360px;
+transition:transform .55s;
+transform-style:preserve-3d;
+}
+
+.flashcard.flipped .inner{transform:rotateY(180deg)}
+
+.side{
+position:absolute;
+inset:0;
+backface-visibility:hidden;
+border-radius:18px;
+padding:22px;
+background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+border:1px solid var(--border);
+box-shadow:var(--shadow);
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+.back{transform:rotateY(180deg);background:linear-gradient(180deg,rgba(180,120,255,.18),rgba(210,160,255,.08))}
+
+.tag{font-size:.75rem;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.05);display:inline-block}
+
+.question{font-size:1.15rem;font-weight:700;line-height:1.55}
+.answer{line-height:1.65;font-size:.95rem}
+
+.controls{margin-top:auto;display:flex;gap:10px;flex-wrap:wrap}
+
+.nav{display:flex;justify-content:center;gap:12px;margin-top:26px}
+
+.studytools{
+display:grid;
+grid-template-columns:1fr auto auto;
+gap:10px;
+margin-top:18px;
+}
+
+.note{margin-top:18px;color:var(--muted);font-size:.9rem}
+
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<h1>IGCSE ICT Revision</h1>
+<div class="subtitle">Flashcards • Past Paper Questions • Practical Tasks</div>
+
+<div class="toolbar">
+<input id="search" placeholder="Search concept or question">
+<select id="topicFilter"></select>
+<select id="subtopicFilter"></select>
+<select id="viewFilter">
+<option value="all">All</option>
+<option value="unknown">Unknown</option>
+<option value="starred">Starred</option>
+</select>
+<button id="shuffleBtn">Shuffle</button>
+</div>
+
+<div class="stats">
+<div>Total: <span id="total"></span></div>
+<div>Known: <span id="known"></span></div>
+<div>Starred: <span id="star"></span></div>
+<div>Visible: <span id="visible"></span></div>
+<div>Card: <span id="index"></span></div>
+</div>
+
+<div class="progressbox">
+<div style="display:flex;justify-content:space-between;margin-bottom:6px">
+<div>Revision Progress</div>
+<div id="progressText">0%</div>
+</div>
+<div class="bar"><div class="barfill" id="barfill"></div></div>
+</div>
+
+<div class="center">
+<div class="flashcard" id="card">
+<div class="inner">
+
+<div class="side front">
+<div>
+<div class="tag" id="topic"></div>
+<div class="tag" id="sub"></div>
+</div>
+
+<div class="question" id="q"></div>
+<div class="answer" style="color:var(--muted)">Think first, then flip.</div>
+
+<div class="controls">
+<button id="flip">Flip</button>
+<button id="knownBtn">Known</button>
+<button id="starBtn">Star</button>
+</div>
+</div>
+
+<div class="side back">
+<div>
+<div class="tag" id="topic2"></div>
+<div class="tag" id="sub2"></div>
+</div>
+
+<div class="question" id="q2"></div>
+<div class="answer" id="a"></div>
+
+<div class="controls">
+<button id="flip2">Back</button>
+<button id="knownBtn2">Known</button>
+<button id="starBtn2">Star</button>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="nav">
+<button id="prev">◀</button>
+<button id="random">Random</button>
+<button id="next">▶</button>
+</div>
+
+<div class="studytools">
+<input type="number" id="jump" placeholder="Jump to card">
+<button id="jumpBtn">Go</button>
+<button id="reset">Reset marks</button>
+</div>
+
+<div class="note">Keyboard: ← previous • → next • space flip</div>
+
+</div>
+
+<script>
+const topicBank = {
+  'Digital Devices': {
+    subtopics: ['Types of devices','Personal computers','Tablets and smartphones','Embedded systems','Input devices','Output devices','Storage devices','Everyday uses'],
+    terms: [
+      ['digital device','an electronic device that processes data in digital form'],
+      ['desktop computer','a non-portable personal computer used for general tasks'],
+      ['laptop','a portable computer with built-in screen and keyboard'],
+      ['tablet','a touchscreen portable device used for apps and media'],
+      ['smartphone','a handheld computer used for communication and apps'],
+      ['embedded system','a computer system built into another device for a specific task'],
+      ['keyboard','an input device used to enter text and commands'],
+      ['mouse','an input device used to control a pointer'],
+      ['scanner','an input device that converts paper documents into digital form'],
+      ['microphone','an input device used to capture sound'],
+      ['monitor','an output device that displays text, images and video'],
+      ['printer','an output device that produces hard copy'],
+      ['speaker','an output device that plays sound'],
+      ['HDD','a magnetic secondary storage device with large capacity'],
+      ['SSD','a flash-based storage device that is faster than an HDD']
+    ]
+  },
+  'Networks': {
+    subtopics: ['LAN and WAN','Wired and wireless','Internet vs web','Network hardware','Topologies','Advantages and disadvantages','Communication'],
+    terms: [
+      ['network','a group of connected devices that share data and resources'],
+      ['LAN','a local area network covering a small geographical area'],
+      ['WAN','a wide area network covering a large geographical area'],
+      ['wired connection','a connection using physical cables such as Ethernet'],
+      ['wireless connection','a connection using radio signals such as Wi-Fi'],
+      ['internet','the global system of interconnected networks'],
+      ['World Wide Web','a service on the internet made up of linked web pages'],
+      ['router','a device that directs data packets between networks'],
+      ['switch','a device that connects devices on a LAN'],
+      ['NIC','hardware that allows a device to connect to a network'],
+      ['star topology','a topology where all devices connect to a central device'],
+      ['bus topology','a topology using one main cable'],
+      ['bandwidth','the amount of data that can be transferred per second'],
+      ['latency','the time delay before data transfer begins']
+    ]
+  },
+  'Operating Systems': {
+    subtopics: ['Purpose','Memory management','Process management','File management','Drivers','GUI and CLI','Examples'],
+    terms: [
+      ['operating system','system software that manages hardware and software resources'],
+      ['memory management','allocation and control of RAM for programs'],
+      ['process','a program currently running'],
+      ['multitasking','running more than one program apparently at the same time'],
+      ['scheduling','deciding which process gets CPU time'],
+      ['file management','organising and controlling files and folders'],
+      ['device driver','software that lets the operating system communicate with hardware'],
+      ['GUI','a graphical user interface using icons, windows and menus'],
+      ['CLI','a command-line interface using typed commands'],
+      ['Windows','a common operating system for personal computers'],
+      ['Linux','an open-source operating system'],
+      ['Android','a mobile operating system'],
+      ['iOS','Apple\'s mobile operating system']
+    ]
+  },
+  'Cyber Security': {
+    subtopics: ['Threats','Malware','Phishing','Hacking','Social engineering','Protection','Safe use'],
+    terms: [
+      ['malware','malicious software designed to damage or disrupt systems'],
+      ['virus','malware that attaches itself to a file or program'],
+      ['worm','malware that copies itself across networks'],
+      ['trojan','malware disguised as legitimate software'],
+      ['ransomware','malware that encrypts files and demands payment'],
+      ['phishing','a scam that tricks users into revealing sensitive data'],
+      ['hacking','gaining unauthorised access to a system'],
+      ['social engineering','manipulating people into revealing information or breaking security rules'],
+      ['antivirus','software that detects and removes malware'],
+      ['firewall','a system that filters network traffic using security rules'],
+      ['encryption','converting readable data into coded form'],
+      ['authentication','proving a user is who they claim to be'],
+      ['two-factor authentication','using a second method of identity checking'],
+      ['backup','a copy of data kept for recovery']
+    ]
+  },
+  'Internet & Cloud': {
+    subtopics: ['Internet services','Browsers','Search engines','Cloud storage','Cloud computing','Risks and benefits','Collaboration'],
+    terms: [
+      ['email','an internet service for sending digital messages'],
+      ['VoIP','voice communication over the internet'],
+      ['streaming','playing media while it is being delivered over the internet'],
+      ['web browser','software used to access and display web pages'],
+      ['search engine','a service that finds web content using keywords'],
+      ['cloud storage','storing files on remote servers accessed through the internet'],
+      ['cloud computing','using remote computing services over the internet'],
+      ['real-time collaboration','multiple users working on the same file at the same time'],
+      ['version history','a record of earlier versions of a file'],
+      ['remote server','a server hosted away from the user\'s own device'],
+      ['SaaS','software accessed online rather than installed locally']
+    ]
+  },
+  'Emerging Technologies': {
+    subtopics: ['AI','Robotics','Automation','IoT','Smart devices','Impact'],
+    terms: [
+      ['artificial intelligence','computer systems performing tasks that normally need human intelligence'],
+      ['machine learning','systems learning patterns from data'],
+      ['robotics','the design and use of robots'],
+      ['robot','a programmable machine that carries out physical tasks'],
+      ['automation','using technology to control processes automatically'],
+      ['sensor','a device that detects physical changes such as temperature or movement'],
+      ['IoT','a network of internet-connected physical devices'],
+      ['smart device','a device with processing, connectivity and often sensors'],
+      ['wearable','a digital device worn on the body'],
+      ['ethical concern','a moral issue raised by the use of technology']
+    ]
+  },
+  'Databases': {
+    subtopics: ['Data vs information','Collection methods','Structure','Fields and records','Keys','Queries','Validation and verification'],
+    terms: [
+      ['data','raw facts that have not yet been processed'],
+      ['information','processed data that has meaning'],
+      ['questionnaire','a data collection method using prepared questions'],
+      ['database','an organised collection of related data'],
+      ['table','a structure that stores records in rows and fields in columns'],
+      ['field','one item of data within a record'],
+      ['record','a complete set of related fields'],
+      ['primary key','a field that uniquely identifies a record'],
+      ['foreign key','a field that links one table to another'],
+      ['query','a request to search or filter database data'],
+      ['validation','checking whether entered data is sensible'],
+      ['verification','checking whether entered data matches the source']
+    ]
+  },
+  'Spreadsheets': {
+    subtopics: ['Structure','Formulae','Functions','Cell references','Charts','Sorting and filtering','Modelling'],
+    terms: [
+      ['spreadsheet','software used to organise data and perform calculations'],
+      ['cell','the intersection of a row and a column'],
+      ['cell reference','the address of a cell such as B4'],
+      ['formula','an expression used to calculate a value'],
+      ['function','a built-in spreadsheet formula'],
+      ['relative reference','a reference that changes when copied'],
+      ['absolute reference','a reference that stays fixed when copied'],
+      ['chart','a visual representation of data'],
+      ['filter','showing only rows that match certain conditions'],
+      ['what-if analysis','changing values to test possible outcomes']
+    ]
+  },
+  'Word Processing': {
+    subtopics: ['Formatting','Styles','Templates','Page layout','Headers and footers','Tables and images','Mail merge'],
+    terms: [
+      ['text formatting','changing the appearance of text'],
+      ['style','a stored set of formatting settings'],
+      ['template','a pre-designed document layout'],
+      ['margin','the blank space around the edge of a page'],
+      ['orientation','portrait or landscape page direction'],
+      ['header','repeated information at the top of a page'],
+      ['footer','repeated information at the bottom of a page'],
+      ['text wrap','controlling how text flows around an image'],
+      ['mail merge','creating personalised documents from one main file and a data source']
+    ]
+  },
+  'Presentations': {
+    subtopics: ['Creating slides','Layouts','Themes','Animations','Transitions','Multimedia','Audience'],
+    terms: [
+      ['presentation software','software used to create slide-based presentations'],
+      ['slide','one screen in a presentation'],
+      ['slide layout','the arrangement of placeholders on a slide'],
+      ['theme','a coordinated set of colours, fonts and effects'],
+      ['animation','an effect applied to objects on a slide'],
+      ['transition','an effect used when moving between slides'],
+      ['multimedia','the use of more than one media type'],
+      ['slide master','a tool that controls repeated design elements']
+    ]
+  },
+  'Website Design': {
+    subtopics: ['HTML basics','Structure','Hyperlinks','Multimedia','Navigation','Accessibility'],
+    terms: [
+      ['HTML','HyperText Markup Language used to structure web pages'],
+      ['tag','markup used to define an HTML element'],
+      ['attribute','extra information placed inside an HTML tag'],
+      ['hyperlink','a clickable link from one resource to another'],
+      ['navigation','menus and links that help users move around a site'],
+      ['alt text','text that describes an image for accessibility'],
+      ['semantic structure','clear page structure that improves readability and accessibility'],
+      ['bandwidth','the amount of data that can be transferred over a connection']
+    ]
+  },
+  'ICT Ethics': {
+    subtopics: ['Copyright','Data protection','Privacy','Digital divide','Environment','Ethics'],
+    terms: [
+      ['copyright','legal protection for original creative work'],
+      ['intellectual property','ownership of creations of the mind'],
+      ['data protection','responsible and lawful handling of personal data'],
+      ['privacy','the right to control personal information'],
+      ['digital divide','the gap between people with and without digital access'],
+      ['e-waste','discarded electronic equipment'],
+      ['carbon footprint','the total emissions caused by a product or activity'],
+      ['ethical use','using technology in a morally responsible way']
+    ]
+  }
+};
+
+const practicalBank = [
+  ['Spreadsheet','Write a spreadsheet formula to add cells B2 to B10.','=SUM(B2:B10)'],
+  ['Spreadsheet','Write a spreadsheet formula to calculate the average of C2:C20.','=AVERAGE(C2:C20)'],
+  ['Spreadsheet','Write an IF formula that returns "Pass" if A1 > 50 otherwise "Fail".','=IF(A1>50,"Pass","Fail")'],
+  ['Spreadsheet','Write a spreadsheet formula to find the highest value in D2:D20.','=MAX(D2:D20)'],
+  ['Spreadsheet','Write a spreadsheet formula to count numbers in A1:A20.','=COUNT(A1:A20)'],
+  ['Spreadsheet','Write a spreadsheet formula multiplying B2 by C2.','=B2*C2'],
+  ['Spreadsheet','Write a spreadsheet formula subtracting C2 from B2.','=B2-C2'],
+  ['Spreadsheet','Give an example of an absolute cell reference.','$A$1'],
+  ['Database','Database query condition to show records where Score is greater than 70.','Score > 70'],
+  ['Database','Database query condition to show City equal to London.','City = "London"'],
+  ['Database','Database query condition to show Age less than 18.','Age < 18'],
+  ['Database','Database query condition to show Name begins with A.','Name LIKE "A*"'],
+  ['Word Processing','What feature creates personalised letters from one template and a data source?','Mail merge'],
+  ['Presentation','What feature controls repeated design elements across all slides?','Slide master'],
+  ['Web Design','Which HTML element is used to create a hyperlink?','<a>']
+];
+
+const theoryTemplates = [
+  (term, desc) => [`What is ${term} in ICT?`, `${term} is ${desc}.`],
+  (term, desc) => [`Explain the term ${term}.`, `${term} means ${desc}.`],
+  (term, desc) => [`Why is ${term} important in ICT?`, `${term} is important because it affects how ICT systems are used, managed or evaluated. In simple terms, it is ${desc}.`],
+  (term, desc) => [`Give one use of ${term}.`, `One use of ${term} is in ICT systems where ${desc}.`],
+  (term, desc) => [`State one advantage of ${term}.`, `One advantage of ${term} is that it improves efficiency, accuracy, access or control depending on the system. ${term} is ${desc}.`]
+];
+
+const examTemplates = [
+  (term, desc) => [`State two advantages of ${term}. (4 marks)`, `Any two explained advantages gain marks. ${term} is ${desc}, so valid points may include speed, accuracy, efficiency, convenience, sharing or control.`],
+  (term, desc) => [`Explain what is meant by ${term}. (2–3 marks)`, `${term} means ${desc}. A full answer should define it clearly and, if possible, give context or an example.`],
+  (term, desc) => [`Describe one use of ${term} in ICT systems.`, `${term} can be used in ICT systems where ${desc}. One clear example with explanation would score well.`],
+  (term, desc) => [`Give one benefit and one limitation of ${term}. (4 marks)`, `Benefit: ${term} can improve performance, access, efficiency or accuracy. Limitation: it may increase cost, create security risk, need training, depend on internet access or reduce flexibility. ${term} is ${desc}.`],
+  (term, desc) => [`Identify one problem that could occur with ${term}.`, `A valid problem could include security risk, cost, technical failure, slower performance, human error or dependence on other systems. ${term} is ${desc}.`]
+];
+
+function pickSubtopic(topicName, idx){
+  const list = topicBank[topicName].subtopics;
+  return list[idx % list.length];
+}
+
+function buildCards(){
+  const cards = [];
+  let id = 1;
+  const topicNames = Object.keys(topicBank);
+
+  topicNames.forEach((topicName, tIndex) => {
+    const terms = topicBank[topicName].terms;
+    terms.forEach(([term, desc], idx) => {
+      theoryTemplates.forEach((template, n) => {
+        const [q,a] = template(term, desc);
+        cards.push({ id:id++, topic:topicName, sub:pickSubtopic(topicName, idx + n), q, a, known:false, star:false, mode:'Theory' });
+      });
+      examTemplates.forEach((template, n) => {
+        const [q,a] = template(term, desc);
+        cards.push({ id:id++, topic:topicName, sub:pickSubtopic(topicName, idx + n + 2), q, a, known:false, star:false, mode:'Past Paper' });
+      });
+    });
+  });
+
+  for(let i=0;i<500;i++){
+    const p = practicalBank[i % practicalBank.length];
+    cards.push({
+      id:id++,
+      topic:'Practical Skills',
+      sub:p[0],
+      q:p[1],
+      a:p[2],
+      known:false,
+      star:false,
+      mode:'Practical'
+    });
+  }
+
+  return cards.slice(0,1800);
+}
+
+const cards = buildCards();
+let visible = [...cards];
+let i = 0;
+let flipped = false;
+
+const cardEl = document.getElementById('card');
+const searchEl = document.getElementById('search');
+const topicFilterEl = document.getElementById('topicFilter');
+const subtopicFilterEl = document.getElementById('subtopicFilter');
+const viewFilterEl = document.getElementById('viewFilter');
+
+function uniq(arr){ return [...new Set(arr)]; }
+
+function populateFilters(){
+  const topics = ['All topics', ...uniq(cards.map(c => c.topic))];
+  topicFilterEl.innerHTML = topics.map(v => `<option value="${v}">${v}</option>`).join('');
+  populateSubtopics();
+}
+
+function populateSubtopics(){
+  const selectedTopic = topicFilterEl.value;
+  let source = cards;
+  if(selectedTopic !== 'All topics') source = cards.filter(c => c.topic === selectedTopic);
+  const subs = ['All subtopics', ...uniq(source.map(c => c.sub))];
+  subtopicFilterEl.innerHTML = subs.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+function current(){ return visible[i] || null; }
+
+function applyFilters(){
+  const q = searchEl.value.trim().toLowerCase();
+  const topic = topicFilterEl.value;
+  const sub = subtopicFilterEl.value;
+  const view = viewFilterEl.value;
+
+  visible = cards.filter(card => {
+    const matchesSearch = !q || `${card.topic} ${card.sub} ${card.mode} ${card.q} ${card.a}`.toLowerCase().includes(q);
+    const matchesTopic = topic === 'All topics' || card.topic === topic;
+    const matchesSub = sub === 'All subtopics' || card.sub === sub;
+    const matchesView = view === 'all' || (view === 'unknown' && !card.known) || (view === 'starred' && card.star);
+    return matchesSearch && matchesTopic && matchesSub && matchesView;
+  });
+
+  if(i >= visible.length) i = 0;
+  flipped = false;
+  cardEl.classList.remove('flipped');
+  render();
+}
+
+function render(){
+  const c = current();
+  const knownCount = cards.filter(x => x.known).length;
+  const starCount = cards.filter(x => x.star).length;
+  const progress = cards.length ? Math.round((knownCount / cards.length) * 100) : 0;
+
+  document.getElementById('total').textContent = cards.length;
+  document.getElementById('known').textContent = knownCount;
+  document.getElementById('star').textContent = starCount;
+  document.getElementById('visible').textContent = visible.length;
+  document.getElementById('index').textContent = visible.length ? `${i + 1} / ${visible.length}` : '0 / 0';
+  document.getElementById('progressText').textContent = `${progress}%`;
+  document.getElementById('barfill').style.width = `${progress}%`;
+
+  if(!c){
+    document.getElementById('topic').textContent = 'No results';
+    document.getElementById('sub').textContent = 'Try another filter';
+    document.getElementById('q').textContent = 'No flashcards match your current filters.';
+    document.getElementById('topic2').textContent = 'No results';
+    document.getElementById('sub2').textContent = 'Try another filter';
+    document.getElementById('q2').textContent = 'No flashcards match your current filters.';
+    document.getElementById('a').textContent = 'Change the search, topic, subtopic or view filter to continue.';
+    return;
+  }
+
+  document.getElementById('topic').textContent = c.topic;
+  document.getElementById('sub').textContent = `${c.sub} • ${c.mode}`;
+  document.getElementById('q').textContent = c.q;
+  document.getElementById('topic2').textContent = c.topic;
+  document.getElementById('sub2').textContent = `${c.sub} • ${c.mode}`;
+  document.getElementById('q2').textContent = c.q;
+  document.getElementById('a').textContent = c.a;
+
+  const knownLabel = c.known ? 'Known ✓' : 'Known';
+  const starLabel = c.star ? 'Starred ★' : 'Star';
+  document.getElementById('knownBtn').textContent = knownLabel;
+  document.getElementById('knownBtn2').textContent = knownLabel;
+  document.getElementById('starBtn').textContent = starLabel;
+  document.getElementById('starBtn2').textContent = starLabel;
+}
+
+function flip(){
+  if(!current()) return;
+  flipped = !flipped;
+  cardEl.classList.toggle('flipped', flipped);
+}
+function flipReset(){ flipped = false; cardEl.classList.remove('flipped'); }
+function next(){ if(!visible.length) return; i = (i + 1) % visible.length; flipReset(); render(); }
+function prev(){ if(!visible.length) return; i = (i - 1 + visible.length) % visible.length; flipReset(); render(); }
+function randomCard(){ if(!visible.length) return; i = Math.floor(Math.random() * visible.length); flipReset(); render(); }
+function markKnown(){ const c = current(); if(!c) return; c.known = !c.known; render(); }
+function markStar(){ const c = current(); if(!c) return; c.star = !c.star; render(); }
+function jump(){ const n = parseInt(document.getElementById('jump').value, 10); if(n > 0 && n <= visible.length){ i = n - 1; flipReset(); render(); } }
+function resetMarks(){ cards.forEach(c => { c.known = false; c.star = false; }); render(); }
+function shuffleVisible(){
+  for(let j = visible.length - 1; j > 0; j--){
+    const k = Math.floor(Math.random() * (j + 1));
+    [visible[j], visible[k]] = [visible[k], visible[j]];
+  }
+  i = 0;
+  flipReset();
+  render();
+}
+
+document.getElementById('flip').onclick = flip;
+document.getElementById('flip2').onclick = flip;
+document.getElementById('next').onclick = next;
+document.getElementById('prev').onclick = prev;
+document.getElementById('random').onclick = randomCard;
+document.getElementById('knownBtn').onclick = markKnown;
+document.getElementById('knownBtn2').onclick = markKnown;
+document.getElementById('starBtn').onclick = markStar;
+document.getElementById('starBtn2').onclick = markStar;
+document.getElementById('jumpBtn').onclick = jump;
+document.getElementById('reset').onclick = resetMarks;
+document.getElementById('shuffleBtn').onclick = shuffleVisible;
+searchEl.addEventListener('input', applyFilters);
+topicFilterEl.addEventListener('change', () => { populateSubtopics(); applyFilters(); });
+subtopicFilterEl.addEventListener('change', applyFilters);
+viewFilterEl.addEventListener('change', applyFilters);
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight') next();
+  if(e.key === 'ArrowLeft') prev();
+  if(e.key === ' '){ e.preventDefault(); flip(); }
+  if(e.key === 'Enter' && document.activeElement === document.getElementById('jump')) jump();
+});
+
+populateFilters();
+render();
+</script>
+
+</body>
+</html>
