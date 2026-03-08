@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICT Flashcards – Focus Mode</title>
+<style>
+:root{
+--bg:#0d021a;
+--panel:#1a0f2e;
+--panel2:#251447;
+--text:#f5edff;
+--muted:#c9b6ff;
+--accent:#b57cff;
+--accent2:#d0a2ff;
+--border:rgba(200,160,255,.22);
+--good:rgba(170,255,200,.22);
+--warn:rgba(255,210,120,.25);
+--radius:22px;
+--shadow:0 18px 50px rgba(25,0,60,.6);
+}
+*{box-sizing:border-box}
+body{
+margin:0;
+font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+background:radial-gradient(circle at 30% 20%, #2a0a4a 0%, #1a0633 40%, #0d021a 100%);
+color:var(--text);
+min-height:100vh;
+}
+.wrap{
+max-width:1100px;
+margin:auto;
+padding:24px 18px 60px;
+}
+h1{margin:0 0 10px;font-size:2.2rem}
+.subtitle{color:var(--muted);margin-bottom:18px;line-height:1.6}
+.toolbar{
+display:grid;
+grid-template-columns:1.2fr 1fr 1fr 1fr auto;
+gap:10px;
+margin-bottom:20px;
+}
+input,select,button{
+padding:11px 12px;
+border-radius:14px;
+border:1px solid var(--border);
+background:var(--panel);
+color:var(--text);
+font-size:.92rem;
+}
+button{cursor:pointer;transition:.15s}
+button:hover{background:var(--panel2);transform:translateY(-1px)}
+.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;color:var(--muted);font-size:.92rem}
+.center-area{display:flex;justify-content:center;align-items:center;margin-top:20px}
+.flashcard{width:min(760px,95%);min-height:380px;perspective:1200px}
+.inner{position:relative;width:100%;height:100%;min-height:380px;transition:transform .55s;transform-style:preserve-3d}
+.flashcard.flipped .inner{transform:rotateY(180deg)}
+.side{
+position:absolute;inset:0;backface-visibility:hidden;
+background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+border-radius:var(--radius);
+border:1px solid var(--border);
+box-shadow:var(--shadow);
+padding:22px;display:flex;flex-direction:column;gap:14px;
+}
+.back{transform:rotateY(180deg);background:linear-gradient(180deg,rgba(122,162,255,.12),rgba(134,231,207,.08))}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.tag{font-size:.76rem;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.05)}
+.question{font-size:1.18rem;font-weight:700;line-height:1.55}
+.answer{line-height:1.72;font-size:1rem;color:#f4f7ff;overflow:auto;max-height:170px}
+.controls{margin-top:auto;display:flex;flex-wrap:wrap;gap:10px}
+.nav{display:flex;justify-content:center;gap:14px;margin-top:26px;flex-wrap:wrap}
+.nav button{font-size:.94rem;padding:10px 16px}
+.known.active{background:var(--good)}
+.star.active{background:var(--warn)}
+.note{color:var(--muted);margin-top:18px;line-height:1.6}
+@media(max-width:900px){.toolbar{grid-template-columns:1fr 1fr}.toolbar input{grid-column:1/-1}}
+@media(max-width:720px){.question{font-size:1.05rem}.flashcard,.inner{min-height:320px}.answer{max-height:150px}}
+@media(max-width:520px){.toolbar{grid-template-columns:1fr}.wrap{padding:16px 12px 40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>ICT Flashcards</h1>
+<div class="subtitle">Single-card focus mode. The full deck is rebuilt inside this page and shown one card at a time, with Previous / Next, Flip, Known, and Star.</div>
+
+<div class="toolbar">
+<input id="search" placeholder="Search cards...">
+<select id="topicFilter"></select>
+<select id="subtopicFilter"></select>
+<select id="viewFilter">
+<option value="all">All cards</option>
+<option value="unknown">Unknown only</option>
+<option value="starred">Starred only</option>
+</select>
+<button id="shuffleBtn">Shuffle</button>
+</div>
+
+<div class="stats">
+<div>Total cards: <span id="totalCount"></span></div>
+<div>Current: <span id="currentIndex"></span></div>
+<div>Known: <span id="knownCount"></span></div>
+<div>Starred: <span id="starredCount"></span></div>
+<div>Visible set: <span id="visibleCount"></span></div>
+</div>
+
+<div class="center-area">
+  <div class="flashcard" id="flashcard">
+    <div class="inner">
+      <div class="side front">
+        <div class="meta">
+          <div class="tag" id="topic"></div>
+          <div class="tag" id="subtopic"></div>
+        </div>
+        <div class="question" id="question"></div>
+        <div class="answer" style="color:var(--muted)">Think first, then flip the card.</div>
+        <div class="controls">
+          <button id="flipBtn">Flip</button>
+          <button id="knownBtn" class="known">Known</button>
+          <button id="starBtn" class="star">Star</button>
+        </div>
+      </div>
+      <div class="side back">
+        <div class="meta">
+          <div class="tag" id="topic2"></div>
+          <div class="tag" id="subtopic2"></div>
+        </div>
+        <div class="question" id="question2"></div>
+        <div class="answer" id="answer"></div>
+        <div class="controls">
+          <button id="flipBackBtn">Back</button>
+          <button id="knownBtn2" class="known">Known</button>
+          <button id="starBtn2" class="star">Star</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Previous</button>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<div class="note">Tip: use the filters to focus on one topic or only your unknown/starred cards.</div>
+</div>
+
+<script>
+const syllabus = [
+  { topic: '1. Digital Devices 🖥️', subtopics: [
+    { name: 'Types of digital devices', facts: [
+      ['digital device','A digital device is an electronic system that processes data in digital form, usually binary, to produce useful information or control actions.'],
+      ['general-purpose device','A general-purpose device can run many different applications, such as a laptop, desktop or tablet.'],
+      ['special-purpose device','A special-purpose device is designed mainly for one task, such as a satnav or barcode scanner.'],
+      ['device classification','Devices can be classified by portability, power, purpose, input method, connectivity and storage capacity.'],
+      ['consumer devices','Consumer digital devices are commonly used by the public for communication, work, entertainment and learning.'],
+      ['business devices','Business devices are often chosen for reliability, manageability, security, support and network integration.']
+    ]},
+    { name: 'Personal computers, tablets, smartphones', facts: [
+      ['desktop computer','A desktop computer is a non-portable personal computer, usually with separate monitor, keyboard and mouse.'],
+      ['laptop','A laptop combines screen, keyboard, battery and processing components in one portable device.'],
+      ['tablet','A tablet is a portable touchscreen device designed for apps, browsing, media and light productivity.'],
+      ['smartphone','A smartphone is a handheld device combining communication, internet access, apps, camera, GPS and sensors.'],
+      ['PC advantages','Personal computers are strong for multitasking, larger storage, full-size peripherals and complex software use.'],
+      ['mobile device advantages','Tablets and smartphones are portable, battery-powered and convenient for communication and cloud access.']
+    ]},
+    { name: 'Embedded systems', facts: [
+      ['embedded system','An embedded system is a computer system built into another device to control specific functions.'],
+      ['embedded examples','Examples include washing machines, microwaves, traffic lights, printers, cars and medical devices.'],
+      ['embedded purpose','Embedded systems are designed for efficient control, monitoring and automation of a limited range of tasks.'],
+      ['embedded characteristics','They are usually reliable, low power, task-specific and often work without user intervention.'],
+      ['real-time control','Some embedded systems must respond immediately to input, such as airbags or industrial sensors.'],
+      ['firmware','Firmware is low-level software stored in memory that controls the operation of an embedded device.']
+    ]},
+    { name: 'Input, output and storage devices', facts: [
+      ['input device','An input device sends data or control signals into a computer system.'],
+      ['keyboard','A keyboard is used for entering text, numbers and commands.'],
+      ['mouse','A mouse controls the pointer and is used for selecting, dragging and navigating graphical interfaces.'],
+      ['scanner','A scanner converts paper documents or images into digital form.'],
+      ['microphone','A microphone captures sound for recording, communication or voice control.'],
+      ['output device','An output device presents processed information from the computer to the user or another device.'],
+      ['monitor','A monitor displays text, graphics and video on screen.'],
+      ['printer','A printer produces hard copy output on paper or other material.'],
+      ['speaker','A speaker outputs audio such as music, speech, warnings or sound effects.'],
+      ['storage device','A storage device keeps data and programs for later use, either temporarily or permanently.'],
+      ['HDD','A hard disk drive stores data magnetically and usually offers high capacity at relatively low cost.'],
+      ['SSD','A solid-state drive stores data on flash memory and is faster, quieter and more shock-resistant than an HDD.']
+    ]},
+    { name: 'Peripheral devices', facts: [
+      ['peripheral device','A peripheral device is hardware connected to a computer to add input, output, storage or communication functions.'],
+      ['input peripherals','Examples of input peripherals include keyboard, mouse, graphics tablet, webcam and barcode reader.'],
+      ['output peripherals','Examples of output peripherals include monitors, projectors, printers and speakers.'],
+      ['storage peripherals','Examples of storage peripherals include USB flash drives, external hard drives and card readers.'],
+      ['communication peripherals','Examples of communication peripherals include network cards, modems and Bluetooth adapters.'],
+      ['peripheral benefit','Peripherals make a system more flexible because they can be added or replaced for different user needs.']
+    ]},
+    { name: 'Uses of digital devices in everyday life', facts: [
+      ['home use','Digital devices are used at home for communication, entertainment, online shopping, homework and smart home control.'],
+      ['education use','In education they support research, note-taking, collaboration, virtual learning and assessment.'],
+      ['business use','In business they support document production, communication, accounting, stock control and customer service.'],
+      ['healthcare use','In healthcare digital devices are used for patient records, monitoring, diagnosis and appointment systems.'],
+      ['transport use','In transport they are used for navigation, ticketing, logistics, traffic control and route planning.'],
+      ['banking use','In banking they support ATMs, online transactions, fraud monitoring and account management.']
+    ]}
+  ]},
+  { topic: '2. Connectivity and Networks 🌐', subtopics: [
+    { name: 'Network types (LAN, WAN)', facts: [
+      ['network','A network is a group of connected devices that can communicate and share data or resources.'],
+      ['LAN','A LAN or local area network covers a small geographical area such as a school, office or home.'],
+      ['WAN','A WAN or wide area network covers a much larger area and can connect multiple LANs across cities or countries.'],
+      ['school LAN','A school network is usually a LAN because devices are linked within one site or campus.'],
+      ['internet as WAN','The internet can be seen as a global network of interconnected networks, effectively wider than a WAN.'],
+      ['network scale','LANs are generally faster and easier to manage than WANs because they cover a smaller area.']
+    ]},
+    { name: 'Wired and wireless connections', facts: [
+      ['wired connection','A wired connection uses physical cables such as Ethernet to transfer data between devices.'],
+      ['wireless connection','A wireless connection uses radio waves such as Wi‑Fi or Bluetooth instead of cables.'],
+      ['wired advantage','Wired connections are usually more stable, secure and faster than wireless connections.'],
+      ['wireless advantage','Wireless connections give mobility and easier installation because devices can move freely within range.'],
+      ['wired disadvantage','Wired networks require cables, ports and installation, which can increase cost and reduce flexibility.'],
+      ['wireless disadvantage','Wireless signals can suffer from interference, weaker security and reduced speed over distance.']
+    ]},
+    { name: 'Internet vs World Wide Web', facts: [
+      ['internet','The internet is the global network infrastructure that connects devices and networks worldwide.'],
+      ['world wide web','The World Wide Web is a service on the internet made up of linked web pages accessed through browsers.'],
+      ['difference','The internet is the network; the web is one system that uses that network.'],
+      ['other internet services','Email, VoIP, file transfer and cloud storage are internet services that are not the web itself.'],
+      ['browser role','A browser is used to access and display web pages on the World Wide Web.'],
+      ['URL','A URL is the address used to locate a resource such as a web page on the internet.']
+    ]},
+    { name: 'Network hardware (routers, switches, NICs)', facts: [
+      ['router','A router directs data packets between different networks and often connects a LAN to the internet.'],
+      ['switch','A switch connects devices inside a LAN and sends data to the correct device using hardware addresses.'],
+      ['NIC','A network interface card allows a device to connect to a network, either wired or wireless.'],
+      ['modem','A modem converts digital and transmission signals so internet data can travel over a service provider line.'],
+      ['wireless access point','A wireless access point provides Wi‑Fi access to a wired network.'],
+      ['server','A server is a computer that provides services, files, applications or data to other computers on a network.']
+    ]},
+    { name: 'Network topologies', facts: [
+      ['topology','Network topology means the physical or logical arrangement of devices and connections in a network.'],
+      ['star topology','In a star topology all devices connect to a central switch or hub.'],
+      ['bus topology','In a bus topology devices share one main communication cable.'],
+      ['ring topology','In a ring topology each device connects to two others, forming a loop.'],
+      ['star advantage','A star network is easier to manage and isolate faults because each device has its own connection.'],
+      ['bus disadvantage','A bus network can be affected heavily if the main cable fails or becomes overloaded.']
+    ]},
+    { name: 'Advantages and disadvantages of networks', facts: [
+      ['network advantage files','Networks allow users to share files and access common resources.'],
+      ['network advantage hardware','Networks allow shared use of hardware such as printers and internet connections.'],
+      ['network advantage communication','Networks support communication through email, messaging, shared workspaces and collaboration tools.'],
+      ['network disadvantage security','Networks increase security risks because unauthorised users or malware may spread across connected systems.'],
+      ['network disadvantage dependence','If the network fails, users may lose access to files, services or communication.'],
+      ['network management','Networks require administration, maintenance and security monitoring to operate effectively.']
+    ]}
+  ]},
+  { topic: '3. Operating Systems 🧠', subtopics: [
+    { name: 'Purpose of operating systems', facts: [
+      ['operating system','An operating system is system software that manages hardware and software resources and provides a platform for applications.'],
+      ['OS purpose','The main purpose of an operating system is to control the computer and allow users and programs to interact with hardware.'],
+      ['resource management','An operating system manages CPU time, memory, files, storage and peripheral devices.'],
+      ['interface purpose','It provides a user interface so that users can run programs and manage files.'],
+      ['security purpose','It helps manage user accounts, permissions and system security.'],
+      ['multitasking purpose','It allows multiple programs or processes to run efficiently.']
+    ]},
+    { name: 'Memory management', facts: [
+      ['memory management','Memory management is the operating system function that allocates RAM to programs and controls how memory is used.'],
+      ['allocation','The OS gives memory space to running programs so they can store instructions and data temporarily.'],
+      ['deallocation','When a program closes, the OS releases memory so it can be reused by other processes.'],
+      ['virtual memory','Virtual memory uses part of storage as temporary memory when RAM is full, though it is slower than RAM.'],
+      ['memory protection','The OS helps protect one program from using memory allocated to another program.'],
+      ['performance effect','Efficient memory management improves speed and reduces crashes or freezing.']
+    ]},
+    { name: 'Process management', facts: [
+      ['process','A process is a program that is currently running.'],
+      ['process management','Process management controls how the CPU shares time between running processes.'],
+      ['multitasking','Multitasking allows more than one program to appear to run at the same time.'],
+      ['scheduling','Scheduling decides which process gets CPU time and for how long.'],
+      ['priority','Some processes may be given higher priority so important tasks respond faster.'],
+      ['background process','A background process runs without direct user interaction, such as updates or print spooling.']
+    ]},
+    { name: 'File management', facts: [
+      ['file management','File management is the OS function that organises, stores, retrieves, renames, copies and deletes files and folders.'],
+      ['folder structure','Folders help users group related files in a logical hierarchy.'],
+      ['permissions','The OS can control who is allowed to view, edit or delete files.'],
+      ['file extension','A file extension often indicates the file type and which software may open it.'],
+      ['saving','Saving writes data from memory to secondary storage for future use.'],
+      ['backup','Backup copies important files to protect them from loss or corruption.']
+    ]},
+    { name: 'Device drivers', facts: [
+      ['device driver','A device driver is software that allows the operating system to communicate with a hardware device.'],
+      ['printer driver','A printer driver translates print commands into a form the printer can understand.'],
+      ['driver importance','Without the correct driver, hardware may not work properly or may not work at all.'],
+      ['driver update','Drivers are updated to improve compatibility, fix bugs and support new features.'],
+      ['specialised control','Different hardware devices need different drivers because they use different commands and capabilities.'],
+      ['plug and play','Plug and play lets the operating system detect and configure many devices automatically.']
+    ]},
+    { name: 'User interface (GUI / CLI)', facts: [
+      ['GUI','A graphical user interface uses windows, icons, menus and a pointer for user interaction.'],
+      ['CLI','A command-line interface requires users to type text commands to control the computer.'],
+      ['GUI advantage','A GUI is easier for most beginners because it is visual and does not require remembering many commands.'],
+      ['CLI advantage','A CLI can be faster for experts and often uses fewer system resources.'],
+      ['GUI disadvantage','A GUI may use more memory and processing power than a CLI.'],
+      ['CLI disadvantage','A CLI can be harder to learn because commands must be entered accurately.']
+    ]},
+    { name: 'Examples of operating systems', facts: [
+      ['Windows','Windows is a widely used operating system for desktop and laptop computers.'],
+      ['macOS','macOS is Apple’s operating system for Mac computers.'],
+      ['Linux','Linux is an open-source operating system used on servers, desktops and many embedded systems.'],
+      ['Android','Android is a mobile operating system widely used on smartphones and tablets.'],
+      ['iOS','iOS is Apple’s mobile operating system for iPhones.'],
+      ['ChromeOS','ChromeOS is a lightweight operating system designed mainly for web-based and cloud-based work.']
+    ]}
+  ]},
+  { topic: '4. Cyber Security 🔐', subtopics: [
+    { name: 'Malware', facts: [
+      ['malware','Malware is malicious software designed to damage systems, steal data or disrupt operations.'],
+      ['virus','A virus attaches itself to files or programs and spreads when the infected file is opened.'],
+      ['worm','A worm is standalone malware that can copy itself across networks without needing a host file.'],
+      ['trojan','A Trojan pretends to be legitimate software but carries harmful code.'],
+      ['ransomware','Ransomware locks or encrypts files and demands payment for their release.'],
+      ['spyware','Spyware secretly collects information about a user or device.']
+    ]},
+    { name: 'Phishing', facts: [
+      ['phishing','Phishing is a scam where attackers trick users into revealing passwords, bank details or other sensitive information.'],
+      ['email phishing','Email phishing uses fake messages that appear to come from trusted organisations.'],
+      ['link danger','Phishing links may take users to fake websites that steal login details.'],
+      ['warning signs','Warning signs include urgent language, suspicious addresses, spelling errors and requests for sensitive information.'],
+      ['spear phishing','Spear phishing targets a specific individual or organisation with personalised messages.'],
+      ['protection from phishing','Users should verify senders, avoid suspicious links and use multi-factor authentication where possible.']
+    ]},
+    { name: 'Hacking', facts: [
+      ['hacking','Hacking is gaining unauthorised access to a computer system, network or data.'],
+      ['unauthorised access','Hackers may try to bypass security to steal, alter, destroy or expose data.'],
+      ['password attack','Weak passwords make hacking easier through guessing, brute force or credential reuse.'],
+      ['software vulnerabilities','Hackers often exploit software bugs or unpatched systems to break in.'],
+      ['ethical hacking','Ethical hacking is authorised security testing to find weaknesses before criminals do.'],
+      ['impact of hacking','Hacking can cause financial loss, downtime, reputational damage and privacy breaches.']
+    ]},
+    { name: 'Social engineering', facts: [
+      ['social engineering','Social engineering manipulates people into breaking security procedures or revealing confidential information.'],
+      ['impersonation','Attackers may pretend to be staff, support agents or trusted contacts.'],
+      ['pretexting','Pretexting is creating a believable story to persuade a victim to share information.'],
+      ['baiting','Baiting tricks users with something attractive, such as a free download or found USB device.'],
+      ['human factor','People are often the weakest part of security because they can be tricked into making mistakes.'],
+      ['social engineering defence','Awareness training, verification procedures and scepticism help reduce social engineering risk.']
+    ]},
+    { name: 'Methods of protection', facts: [
+      ['antivirus','Antivirus software scans for, detects and helps remove malicious software.'],
+      ['firewall','A firewall monitors and filters incoming and outgoing network traffic based on security rules.'],
+      ['encryption','Encryption converts readable data into coded form so unauthorised users cannot understand it easily.'],
+      ['authentication','Authentication checks that a user is really who they claim to be before granting access.'],
+      ['strong password','A strong password is long, hard to guess and ideally unique for each service.'],
+      ['two-factor authentication','Two-factor authentication adds a second proof of identity, such as a code sent to a phone.']
+    ]},
+    { name: 'Safe use of networks and internet', facts: [
+      ['safe browsing','Safe browsing includes checking website addresses, using secure connections and avoiding suspicious downloads.'],
+      ['secure websites','Secure websites often use HTTPS to help protect data sent between browser and server.'],
+      ['software updates','Keeping software updated reduces the risk of known security weaknesses being exploited.'],
+      ['public Wi‑Fi risk','Public Wi‑Fi may be less secure because attackers can intercept traffic on poorly protected networks.'],
+      ['backup for security','Regular backups reduce damage from malware, deletion, hardware failure or ransomware.'],
+      ['user awareness','Good user awareness is essential because technology alone cannot prevent every cyber threat.']
+    ]}
+  ]},
+  { topic: '5. The Internet and Cloud Computing ☁️', subtopics: [
+    { name: 'Internet services', facts: [
+      ['internet services','Internet services include email, web browsing, instant messaging, file transfer, cloud storage, streaming and VoIP.'],
+      ['email','Email allows users to send digital messages and attachments quickly worldwide.'],
+      ['VoIP','Voice over Internet Protocol carries voice calls over the internet instead of traditional phone networks.'],
+      ['streaming','Streaming delivers audio or video in real time without requiring the whole file to be downloaded first.'],
+      ['file transfer','File transfer services allow users to upload and download files between systems.'],
+      ['online banking','Online banking is an internet service that lets users manage accounts and transactions remotely.']
+    ]},
+    { name: 'Web browsers and search engines', facts: [
+      ['web browser','A web browser is software used to access, retrieve and display web pages.'],
+      ['search engine','A search engine is a web-based system that indexes pages and helps users find information using keywords.'],
+      ['browser examples','Common browsers include Chrome, Edge, Firefox and Safari.'],
+      ['search keywords','Using precise keywords improves the relevance of search results.'],
+      ['search operators','Quotation marks, minus signs and filters can refine search results in many search engines.'],
+      ['result evaluation','Search results should be checked for authority, currency, bias and relevance.']
+    ]},
+    { name: 'Cloud storage and cloud computing', facts: [
+      ['cloud storage','Cloud storage saves files on remote servers accessed through the internet.'],
+      ['cloud computing','Cloud computing provides computing services such as storage, software or processing power over the internet.'],
+      ['remote servers','In cloud systems, data and services are hosted on servers managed by a provider.'],
+      ['syncing','Cloud services can synchronise files across multiple devices automatically.'],
+      ['software as a service','Software as a service means software is accessed online instead of installed locally.'],
+      ['scalability','Cloud systems can often scale up or down more easily than local systems.']
+    ]},
+    { name: 'Advantages and risks of cloud services', facts: [
+      ['cloud advantage access','Cloud services allow access from different devices and locations with an internet connection.'],
+      ['cloud advantage collaboration','Cloud services often support real-time collaboration on shared documents.'],
+      ['cloud advantage backup','Cloud storage can help protect data by keeping copies on remote servers.'],
+      ['cloud risk internet','If the internet connection fails, access to cloud services may be limited or unavailable.'],
+      ['cloud risk privacy','Storing data with a provider can raise privacy, security and legal concerns.'],
+      ['cloud risk dependence','Users may become dependent on one provider’s reliability, pricing and terms of service.']
+    ]},
+    { name: 'Online collaboration tools', facts: [
+      ['collaboration tools','Online collaboration tools let multiple users communicate, share files and work on tasks together.'],
+      ['shared document','A shared document allows several users to edit or comment on the same file.'],
+      ['video meeting','Video meeting tools support remote discussions, lessons and teamwork.'],
+      ['version history','Version history helps users track changes and restore earlier versions of work.'],
+      ['commenting','Commenting tools let users suggest changes or discuss work without altering the main content immediately.'],
+      ['collaboration benefit','These tools improve teamwork across distance and time zones.']
+    ]}
+  ]},
+  { topic: '6. Automated and Emerging Technologies 🤖', subtopics: [
+    { name: 'Artificial intelligence', facts: [
+      ['artificial intelligence','Artificial intelligence is the use of computer systems to perform tasks that normally require human intelligence.'],
+      ['AI examples','Examples include voice assistants, image recognition, recommendation systems and chatbots.'],
+      ['machine learning','Machine learning is a branch of AI where systems learn patterns from data.'],
+      ['AI use','AI is used in healthcare, finance, transport, retail and security.'],
+      ['AI benefit','AI can improve speed, consistency and automation of decisions or pattern recognition.'],
+      ['AI concern','AI can raise concerns about bias, privacy, accountability and job displacement.']
+    ]},
+    { name: 'Robotics', facts: [
+      ['robotics','Robotics is the design and use of robots to perform physical tasks.'],
+      ['robot','A robot is a programmable machine that can carry out actions automatically.'],
+      ['industrial robots','Industrial robots are used in factories for welding, assembly, packaging and repetitive tasks.'],
+      ['service robots','Service robots may be used in healthcare, cleaning, hospitality or delivery.'],
+      ['robot sensors','Robots often use sensors to detect position, objects, temperature or movement.'],
+      ['robot advantage','Robots can work accurately for long periods in dangerous or repetitive environments.']
+    ]},
+    { name: 'Automation', facts: [
+      ['automation','Automation is the use of technology to control processes with reduced human involvement.'],
+      ['automated system','An automated system uses input, processing and output to monitor and control operations.'],
+      ['control applications','Automation is used in traffic systems, manufacturing, climate control and processing plants.'],
+      ['sensor role','Sensors provide data to the control system so it can respond to changing conditions.'],
+      ['automation advantage','Automation can improve efficiency, consistency and safety.'],
+      ['automation disadvantage','Automation can be expensive to set up and may reduce some manual job roles.']
+    ]},
+    { name: 'Internet of Things (IoT)', facts: [
+      ['IoT','The Internet of Things is a network of physical devices connected to the internet that collect and exchange data.'],
+      ['IoT examples','Examples include smart thermostats, fitness trackers, smart speakers and connected cameras.'],
+      ['IoT data','IoT devices often use sensors to collect real-time data from their environment.'],
+      ['IoT control','Users can often monitor or control IoT devices remotely through apps or web services.'],
+      ['IoT benefit','IoT can improve convenience, efficiency and automation.'],
+      ['IoT risk','IoT devices can create privacy and security risks if poorly designed or configured.']
+    ]},
+    { name: 'Smart devices', facts: [
+      ['smart device','A smart device is an electronic device with processing, connectivity and often sensor capability.'],
+      ['smart home','Smart home devices can control lighting, heating, security and appliances remotely or automatically.'],
+      ['wearables','Wearables such as smartwatches collect data and provide notifications, tracking and app features.'],
+      ['connected appliance','A connected appliance can send status information and accept remote commands.'],
+      ['smart benefits','Smart devices can save time, personalise services and improve monitoring.'],
+      ['smart concerns','They can also raise concerns about data collection, reliability and dependency on internet services.']
+    ]},
+    { name: 'Impact of emerging technologies', facts: [
+      ['social impact','Emerging technologies can change communication, work patterns and everyday lifestyles.'],
+      ['economic impact','They can create new industries and productivity gains, but may also replace some jobs.'],
+      ['ethical impact','They raise ethical questions about surveillance, fairness, control and responsibility.'],
+      ['education impact','Emerging technologies can improve learning access, adaptive learning and digital skills development.'],
+      ['health impact','They support monitoring, diagnosis and treatment but may create risks if systems fail or data is misused.'],
+      ['legal impact','Laws may need to adapt to regulate privacy, safety, liability and data use in new systems.']
+    ]}
+  ]},
+  { topic: '7. Data and Databases 🗄️', subtopics: [
+    { name: 'Data vs information', facts: [
+      ['data','Data is raw, unprocessed facts such as numbers, text, dates or measurements.'],
+      ['information','Information is processed data that has meaning and usefulness.'],
+      ['difference data information','Data becomes information after it is organised, processed or interpreted in context.'],
+      ['example raw score','A list of test marks is data until it is analysed to show averages, grades or trends.'],
+      ['quality information','Useful information should be accurate, relevant, timely and easy to understand.'],
+      ['garbage in garbage out','Poor-quality input data leads to poor-quality output information.']
+    ]},
+    { name: 'Data collection methods', facts: [
+      ['questionnaire','A questionnaire collects data by asking a prepared set of questions.'],
+      ['observation','Observation collects data by watching events, behaviour or processes directly.'],
+      ['sensor collection','Sensors automatically collect data such as temperature, speed or light level.'],
+      ['interview','An interview collects data through spoken questions and answers.'],
+      ['online form','An online form allows users to submit structured data electronically.'],
+      ['data collection planning','Good data collection methods should match the purpose, audience and required accuracy.']
+    ]},
+    { name: 'Databases and database structures', facts: [
+      ['database','A database is an organised collection of related data stored for efficient access, updating and retrieval.'],
+      ['table','A table stores related records in rows and fields in columns.'],
+      ['field','A field is one item of data within a record, such as surname or date of birth.'],
+      ['record','A record is a complete set of related fields about one item or person.'],
+      ['database structure','Database structure refers to how tables, fields, keys and relationships are organised.'],
+      ['DBMS','A database management system is software used to create, manage and query databases.']
+    ]},
+    { name: 'Fields, records and tables', facts: [
+      ['field example','In a student database, name, class and date of birth could each be separate fields.'],
+      ['record example','One student’s full set of details across all fields makes one record.'],
+      ['table example','All student records together form a table, such as a Students table.'],
+      ['field type','Each field has a data type such as text, number, date or Boolean.'],
+      ['consistent structure','Using consistent field types improves accuracy and searching.'],
+      ['table purpose','Tables help store large amounts of structured data efficiently.']
+    ]},
+    { name: 'Primary keys', facts: [
+      ['primary key','A primary key is a field that uniquely identifies each record in a table.'],
+      ['unique value','A primary key must not contain duplicate values.'],
+      ['importance of key','Primary keys prevent ambiguity and help databases locate specific records quickly.'],
+      ['example primary key','A student ID is often a good primary key because each student has a different number.'],
+      ['foreign key','A foreign key is a field in one table that links to the primary key in another table.'],
+      ['relationship use','Keys help create relationships between tables in a relational database.']
+    ]},
+    { name: 'Queries, forms and reports', facts: [
+      ['query','A query searches a database for records that match given criteria.'],
+      ['query example','A query could return all customers in London with balances over 100.'],
+      ['form','A form provides a user-friendly way to enter, edit or view database records.'],
+      ['report','A report presents selected data in a formatted layout suitable for reading or printing.'],
+      ['sorting','Sorting arranges records in a chosen order such as alphabetic or numeric.'],
+      ['filtering','Filtering shows only records that meet specific conditions.']
+    ]},
+    { name: 'Data validation and verification', facts: [
+      ['validation','Validation checks whether entered data is sensible and follows set rules.'],
+      ['verification','Verification checks whether data has been entered or copied accurately.'],
+      ['range check','A range check ensures data falls within a minimum and maximum value.'],
+      ['presence check','A presence check makes sure a required field is not left blank.'],
+      ['double entry verification','Double entry verification compares data entered twice to find mismatches.'],
+      ['proofreading','Proofreading is a verification method where data is checked visually against the source.']
+    ]}
+  ]},
+  { topic: '8. Data Processing and Spreadsheets 📊', subtopics: [
+    { name: 'Spreadsheet structure', facts: [
+      ['spreadsheet','A spreadsheet is software used to organise data in rows and columns and perform calculations.'],
+      ['cell','A cell is the intersection of a row and a column.'],
+      ['cell reference','A cell reference identifies a cell by column letter and row number, such as B4.'],
+      ['worksheet','A worksheet is one page or tab within a spreadsheet file.'],
+      ['workbook','A workbook is the whole spreadsheet file containing one or more worksheets.'],
+      ['formula bar','The formula bar shows the contents or formula of the selected cell.']
+    ]},
+    { name: 'Formulae and functions', facts: [
+      ['formula','A formula is an expression used to calculate a value in a spreadsheet.'],
+      ['function','A function is a built-in formula such as SUM or AVERAGE.'],
+      ['SUM','SUM adds a range of values together.'],
+      ['AVERAGE','AVERAGE finds the mean of selected values.'],
+      ['IF','IF tests a condition and returns one value if true and another if false.'],
+      ['MAX MIN','MAX returns the highest value and MIN returns the lowest value in a range.']
+    ]},
+    { name: 'Absolute and relative cell references', facts: [
+      ['relative reference','A relative reference changes when copied to another cell.'],
+      ['absolute reference','An absolute reference stays fixed when copied, for example $A$1.'],
+      ['mixed reference','A mixed reference fixes either the row or the column, but not both.'],
+      ['copying formulas','Understanding references is essential when replicating formulas across many cells.'],
+      ['tax example','A tax rate stored in one cell often needs an absolute reference so every formula uses the same rate.'],
+      ['error risk','Using the wrong reference type is a common spreadsheet mistake.']
+    ]},
+    { name: 'Charts and graphs', facts: [
+      ['chart purpose','Charts turn data into visual form to make comparison and trends easier to understand.'],
+      ['bar chart','A bar or column chart is useful for comparing quantities across categories.'],
+      ['line graph','A line graph is useful for showing change over time.'],
+      ['pie chart','A pie chart is useful for showing parts of a whole.'],
+      ['scatter graph','A scatter graph shows the relationship between two numerical variables.'],
+      ['chart labels','Titles, axis labels, legends and correct scales improve clarity and marks in exams.']
+    ]},
+    { name: 'Sorting and filtering data', facts: [
+      ['sorting data','Sorting arranges rows according to values such as alphabetical order or highest to lowest.'],
+      ['single sort','A single-field sort uses one field or column to order the data.'],
+      ['multi-level sort','A multi-level sort uses more than one field in priority order.'],
+      ['filtering data','Filtering shows only records that meet selected conditions.'],
+      ['benefit of filtering','Filtering helps users focus on relevant data without deleting anything.'],
+      ['data analysis','Sorting and filtering are basic tools for analysing spreadsheet or database data.']
+    ]},
+    { name: 'Using spreadsheets for modelling', facts: [
+      ['modelling','Spreadsheet modelling uses formulas to represent real situations and test scenarios.'],
+      ['what-if analysis','What-if analysis changes values to see how results are affected.'],
+      ['financial model','A budget spreadsheet is a common model used to predict income, costs and profit.'],
+      ['benefit of model','Models save time and money because different options can be tested without real-world risk.'],
+      ['limitation of model','A model is only as good as the assumptions and data used to build it.'],
+      ['scenario testing','Users can compare best-case, likely and worst-case outcomes in a model.']
+    ]}
+  ]},
+  { topic: '9. Word Processing and Document Production 📄', subtopics: [
+    { name: 'Formatting text', facts: [
+      ['text formatting','Text formatting changes the appearance of text to improve clarity and emphasis.'],
+      ['font style','Font choices include typeface, size, bold, italic, underline and colour.'],
+      ['alignment','Text can be aligned left, right, centre or justified.'],
+      ['line spacing','Line spacing controls the vertical space between lines of text.'],
+      ['bullets numbering','Bullets and numbering organise lists clearly.'],
+      ['consistency','Consistent formatting gives a document a professional appearance.']
+    ]},
+    { name: 'Styles and templates', facts: [
+      ['style','A style is a saved set of formatting settings that can be applied quickly.'],
+      ['template','A template is a pre-designed document structure used as a starting point.'],
+      ['heading styles','Heading styles help create consistent titles and support automatic contents pages.'],
+      ['template benefit','Templates save time and keep layout and branding consistent.'],
+      ['house style','A house style is a standard design used by an organisation across documents.'],
+      ['professional output','Using styles and templates improves readability and uniformity.']
+    ]},
+    { name: 'Page layout', facts: [
+      ['page layout','Page layout means arranging content on a page for effective presentation.'],
+      ['margins','Margins are the blank spaces around the edges of a page.'],
+      ['orientation','Page orientation can be portrait or landscape.'],
+      ['columns','Columns divide text vertically and are common in newsletters and brochures.'],
+      ['page break','A page break forces content to start on a new page.'],
+      ['layout choice','Good layout depends on audience, purpose and output medium.']
+    ]},
+    { name: 'Headers and footers', facts: [
+      ['header','A header is repeated information shown at the top of pages.'],
+      ['footer','A footer is repeated information shown at the bottom of pages.'],
+      ['page number','Page numbers are often inserted in headers or footers for navigation.'],
+      ['document identity','Headers and footers can include dates, author names, file names or document titles.'],
+      ['consistency in long docs','They help long documents stay organised and professional.'],
+      ['print usefulness','They are especially useful on printed pages where pages may become separated.']
+    ]},
+    { name: 'Tables and images', facts: [
+      ['table use','Tables organise data into rows and columns for easier reading.'],
+      ['image insertion','Images can be inserted to support meaning, interest or branding.'],
+      ['text wrap','Text wrap controls how text flows around an image.'],
+      ['resizing images','Images should be resized proportionally to avoid distortion.'],
+      ['captions','Captions explain images or figures and improve understanding.'],
+      ['layout balance','Tables and images should be placed carefully so the page stays clear and readable.']
+    ]},
+    { name: 'Mail merge', facts: [
+      ['mail merge definition','Mail merge creates many personalised documents from one template and a data source.'],
+      ['main document','The main document contains the fixed text and placeholders for variable fields.'],
+      ['data source','The data source stores personal details such as name, address or account number.'],
+      ['merge fields','Merge fields insert variable data from the source into the main document.'],
+      ['mail merge use','Mail merge is useful for letters, labels, certificates and invitations.'],
+      ['accuracy importance','The data source must be clean and accurate for mail merge to work correctly.']
+    ]}
+  ]},
+  { topic: '10. Presentation Software 🎤', subtopics: [
+    { name: 'Creating presentations', facts: [
+      ['presentation software','Presentation software is used to create slide-based visual presentations.'],
+      ['slide','A slide is one screen or page in a presentation.'],
+      ['title slide','A title slide introduces the topic and presenter or organisation.'],
+      ['planning','A good presentation is planned around clear points rather than overcrowded text.'],
+      ['speaker support','Slides should support the speaker, not replace the speaker entirely.'],
+      ['structure','Presentations should have a clear beginning, middle and end.']
+    ]},
+    { name: 'Slide layouts', facts: [
+      ['slide layout','A slide layout controls how placeholders such as title, text and images are arranged.'],
+      ['placeholder','A placeholder is an area reserved for content like text, charts or pictures.'],
+      ['consistent layout','Using consistent layouts makes a presentation easier to follow.'],
+      ['layout choice','Different layouts suit different content such as comparison, image focus or bullet points.'],
+      ['master slide','A master slide controls repeated design elements across the whole presentation.'],
+      ['efficiency','Using layouts and masters saves time and improves consistency.']
+    ]},
+    { name: 'Themes and design', facts: [
+      ['theme','A theme is a coordinated set of colours, fonts and effects used across a presentation.'],
+      ['design consistency','Consistent design helps the audience focus on meaning rather than random formatting.'],
+      ['contrast','Good contrast between background and text improves readability.'],
+      ['minimal text','Slides should usually contain short points instead of dense paragraphs.'],
+      ['appropriate style','Design should match the audience and purpose, such as formal for business or simple for education.'],
+      ['visual hierarchy','Larger headings and clear spacing guide the audience through key information.']
+    ]},
+    { name: 'Animations and transitions', facts: [
+      ['animation','Animation affects how objects appear, move or disappear on a slide.'],
+      ['transition','A transition is the visual effect used when moving from one slide to another.'],
+      ['purposeful use','Animations and transitions should support meaning, not distract the audience.'],
+      ['overuse risk','Too many effects can make a presentation look unprofessional or confusing.'],
+      ['timing','Timing controls when effects occur and for how long.'],
+      ['audience focus','Simple effects often keep the audience focused better than flashy ones.']
+    ]},
+    { name: 'Inserting images, audio and video', facts: [
+      ['multimedia','Multimedia means combining more than one media type such as text, sound, image or video.'],
+      ['image purpose','Images can explain ideas quickly and make slides more engaging.'],
+      ['audio use','Audio may be used for narration, music or sound effects when appropriate.'],
+      ['video use','Video can demonstrate a process or provide real examples.'],
+      ['file size concern','Large media files can make presentations slower to load or harder to share.'],
+      ['copyright check','Media should be used legally and with permission where required.']
+    ]},
+    { name: 'Audience considerations', facts: [
+      ['audience awareness','A presentation should be designed around the needs, age, background and expectations of the audience.'],
+      ['reading level','Language and detail should match what the audience can understand.'],
+      ['accessibility in slides','Readable fonts, colour contrast and sensible pacing help accessibility.'],
+      ['purpose match','The content should fit whether the goal is to inform, persuade, instruct or entertain.'],
+      ['time limit','The amount of content should match the available presentation time.'],
+      ['engagement','Audience engagement improves when slides are clear, relevant and visually balanced.']
+    ]}
+  ]},
+  { topic: '11. Website Design 🌍', subtopics: [
+    { name: 'HTML basics', facts: [
+      ['HTML','HTML stands for HyperText Markup Language and is used to structure web pages.'],
+      ['tag','A tag is a piece of markup that tells the browser how content should be structured.'],
+      ['opening closing tags','Most HTML elements use an opening tag and a closing tag around content.'],
+      ['attribute','An attribute gives extra information about an HTML element, such as a link destination or image source.'],
+      ['common tags','Common tags include headings, paragraphs, links, images, lists and tables.'],
+      ['browser interpretation','The browser reads HTML and displays the structured content as a web page.']
+    ]},
+    { name: 'Web page structure', facts: [
+      ['page structure','A web page is usually organised into sections such as header, navigation, main content and footer.'],
+      ['heading hierarchy','Headings create clear structure and show the importance of sections.'],
+      ['paragraph use','Paragraph tags are used for blocks of normal text.'],
+      ['list use','Lists present grouped items clearly and efficiently.'],
+      ['table use web','Tables should be used for tabular data rather than page layout.'],
+      ['semantic structure','Clear structure improves readability, maintenance and accessibility.']
+    ]},
+    { name: 'Hyperlinks', facts: [
+      ['hyperlink','A hyperlink is a clickable connection from one web resource to another.'],
+      ['internal link','An internal link connects pages within the same website.'],
+      ['external link','An external link connects to a page on a different website.'],
+      ['navigation role','Links are essential for navigation and moving between related information.'],
+      ['anchor text','Anchor text should describe the destination clearly.'],
+      ['broken link','A broken link leads to a missing or unavailable destination and harms usability.']
+    ]},
+    { name: 'Multimedia on websites', facts: [
+      ['web multimedia','Web multimedia includes images, audio, video, animation and interactive content.'],
+      ['image optimisation','Images should be optimised so pages load quickly without losing too much quality.'],
+      ['video embedding','Video can be embedded to demonstrate, explain or promote content.'],
+      ['audio caution','Audio should be used carefully because automatic playback may annoy users.'],
+      ['bandwidth issue','Heavy multimedia can slow loading, especially on weak internet connections.'],
+      ['purposeful media','Media should support the page purpose rather than distract from it.']
+    ]},
+    { name: 'Navigation design', facts: [
+      ['navigation design','Navigation design is the planning of menus and links so users can find information easily.'],
+      ['menu consistency','Menus should appear in a consistent place across the site.'],
+      ['clear labels','Navigation labels should be short, familiar and meaningful.'],
+      ['site map','A site map shows the structure of pages within a website.'],
+      ['user journey','Good navigation reduces the number of clicks needed to reach important content.'],
+      ['usability','Poor navigation can make even useful content hard to access.']
+    ]},
+    { name: 'Accessibility considerations', facts: [
+      ['web accessibility','Web accessibility means designing pages so people with different needs can use them.'],
+      ['alt text','Alternative text describes images for users who cannot see them.'],
+      ['contrast accessibility','Good colour contrast helps users with visual impairments read content.'],
+      ['keyboard access','Sites should be usable without a mouse so keyboard-only users can navigate them.'],
+      ['readable text','Clear fonts, sensible sizes and simple language improve accessibility.'],
+      ['accessibility benefit','Accessible design improves usability for everyone, not only disabled users.']
+    ]}
+  ]},
+  { topic: '12. Legal, Ethical and Environmental Issues ⚖️', subtopics: [
+    { name: 'Copyright and intellectual property', facts: [
+      ['copyright','Copyright protects original creative work from being copied or used without permission.'],
+      ['intellectual property','Intellectual property is legally protected creation of the mind, such as music, writing, software or inventions.'],
+      ['software piracy','Software piracy is the illegal copying, sharing or use of software without a valid licence.'],
+      ['licensed use','Users must follow the terms of licences when using digital content or software.'],
+      ['acknowledgement','Sources should be credited appropriately when using permitted material.'],
+      ['creator rights','Copyright gives creators control over how their work is reproduced and distributed.']
+    ]},
+    { name: 'Data protection', facts: [
+      ['data protection','Data protection is the responsible and lawful handling of personal data.'],
+      ['personal data','Personal data is information that can identify a living individual.'],
+      ['fair use','Personal data should be collected and used fairly for clear purposes.'],
+      ['data security','Organisations should protect personal data from loss, theft and unauthorised access.'],
+      ['data minimisation','Only necessary personal data should be collected and kept.'],
+      ['individual rights','People should have rights over how their personal data is used and corrected.']
+    ]},
+    { name: 'Privacy', facts: [
+      ['privacy','Privacy is the right to control personal information and aspects of one’s private life.'],
+      ['online privacy','Online privacy concerns what data is collected, stored, shared or tracked on the internet.'],
+      ['location data','Location tracking can improve services but also reveal sensitive movement patterns.'],
+      ['cookies privacy','Cookies can support useful functions but may also track user behaviour.'],
+      ['surveillance concern','Excessive monitoring may reduce privacy and create ethical concerns.'],
+      ['privacy balance','A balance is often needed between convenience, security and personal privacy.']
+    ]},
+    { name: 'Digital divide', facts: [
+      ['digital divide','The digital divide is the gap between those with access to digital technology and those without it.'],
+      ['causes of divide','Causes include cost, infrastructure, education, disability and location.'],
+      ['impact on learning','A digital divide can reduce access to learning, information and online services.'],
+      ['impact on jobs','People without digital access may be disadvantaged in job applications and remote work.'],
+      ['closing the gap','Training, affordable devices and better infrastructure can help reduce the divide.'],
+      ['social fairness','Reducing the digital divide supports equality of opportunity.']
+    ]},
+    { name: 'Environmental impact of ICT', facts: [
+      ['e-waste','Electronic waste is discarded digital equipment that may contain harmful materials.'],
+      ['energy use','ICT systems use electricity during manufacture, operation, cooling and networking.'],
+      ['resource extraction','Making devices requires raw materials, including rare and finite resources.'],
+      ['recycling','Recycling devices can recover useful materials and reduce landfill waste.'],
+      ['carbon footprint','ICT contributes to carbon emissions through production, transport and energy consumption.'],
+      ['sustainable practice','Longer device life, repair, recycling and efficient systems reduce environmental harm.']
+    ]},
+    { name: 'Ethical use of technology', facts: [
+      ['ethics in ICT','Ethics in ICT concerns what is morally right or wrong when using technology.'],
+      ['responsible use','Responsible use includes respecting others, following laws and avoiding harm.'],
+      ['AI ethics','AI ethics includes fairness, transparency, accountability and avoiding harmful bias.'],
+      ['social media ethics','Users should avoid harassment, misinformation and misuse of other people’s content or data.'],
+      ['workplace ethics','In workplaces, ethical ICT use includes protecting confidential information and using systems properly.'],
+      ['ethical judgement','Not every ethical issue is illegal, but it may still be wrong or harmful.']
+    ]}
+  ]}
+];
+
+const promptTemplates = [
+  { q:(f,s,t)=>`What is ${f.term}?`, a:(f)=>f.explanation },
+  { q:(f,s,t)=>`Explain ${f.term} in ICT.`, a:(f)=>f.explanation },
+  { q:(f,s,t)=>`Define ${f.term} used in ${s}.`, a:(f)=>f.explanation },
+  { q:(f,s,t)=>`Why is ${f.term} important in ICT systems?`, a:(f)=>`${f.explanation} It matters because it affects how ICT systems are used, managed or evaluated.` }
+];
+
+function buildCards(){
+  const cards=[];
+  let id=1;
+  syllabus.forEach(section=>{
+    section.subtopics.forEach(sub=>{
+      sub.facts.forEach(([term, explanation])=>{
+        const fact={term, explanation};
+        promptTemplates.forEach(template=>{
+          cards.push({
+            id:id++,
+            topic:section.topic,
+            subtopic:sub.name,
+            q:template.q(fact, sub.name, section.topic),
+            a:template.a(fact),
+            known:false,
+            starred:false
+          });
+        });
+      });
+    });
+  });
+  return cards.slice(0,1000);
+}
+
+const allCards = buildCards();
+let visibleCards = [...allCards];
+let index = 0;
+let flipped = false;
+
+const searchEl = document.getElementById('search');
+const topicFilterEl = document.getElementById('topicFilter');
+const subtopicFilterEl = document.getElementById('subtopicFilter');
+const viewFilterEl = document.getElementById('viewFilter');
+const flashcardEl = document.getElementById('flashcard');
+
+function unique(arr){ return [...new Set(arr)]; }
+
+function populateTopicFilter(){
+  const topics = ['all', ...unique(allCards.map(c=>c.topic))];
+  topicFilterEl.innerHTML = topics.map(t=>`<option value="${t}">${t === 'all' ? 'All topics' : t}</option>`).join('');
+}
+
+function populateSubtopicFilter(){
+  let source = allCards;
+  if(topicFilterEl.value !== 'all') source = source.filter(c=>c.topic === topicFilterEl.value);
+  const subs = ['all', ...unique(source.map(c=>c.subtopic))];
+  subtopicFilterEl.innerHTML = subs.map(s=>`<option value="${s}">${s === 'all' ? 'All subtopics' : s}</option>`).join('');
+}
+
+function applyFilters(){
+  const search = searchEl.value.trim().toLowerCase();
+  const topic = topicFilterEl.value;
+  const subtopic = subtopicFilterEl.value;
+  const view = viewFilterEl.value;
+
+  visibleCards = allCards.filter(card=>{
+    const matchesSearch = !search || `${card.topic} ${card.subtopic} ${card.q} ${card.a}`.toLowerCase().includes(search);
+    const matchesTopic = topic === 'all' || card.topic === topic;
+    const matchesSubtopic = subtopic === 'all' || card.subtopic === subtopic;
+    const matchesView = view === 'all' || (view === 'unknown' && !card.known) || (view === 'starred' && card.starred);
+    return matchesSearch && matchesTopic && matchesSubtopic && matchesView;
+  });
+
+  if(index >= visibleCards.length) index = 0;
+  flipped = false;
+  flashcardEl.classList.remove('flipped');
+  render();
+}
+
+function currentCard(){
+  return visibleCards.length ? visibleCards[index] : null;
+}
+
+function render(){
+  const card = currentCard();
+  document.getElementById('totalCount').textContent = allCards.length;
+  document.getElementById('knownCount').textContent = allCards.filter(c=>c.known).length;
+  document.getElementById('starredCount').textContent = allCards.filter(c=>c.starred).length;
+  document.getElementById('visibleCount').textContent = visibleCards.length;
+
+  if(!card){
+    document.getElementById('currentIndex').textContent = '0 / 0';
+    document.getElementById('topic').textContent = 'No results';
+    document.getElementById('subtopic').textContent = 'Try changing filters';
+    document.getElementById('question').textContent = 'No flashcards match the current filters.';
+    document.getElementById('topic2').textContent = 'No results';
+    document.getElementById('subtopic2').textContent = 'Try changing filters';
+    document.getElementById('question2').textContent = 'No flashcards match the current filters.';
+    document.getElementById('answer').textContent = 'Clear the search box or change the topic, subtopic or view filters.';
+    return;
+  }
+
+  document.getElementById('currentIndex').textContent = `${index + 1} / ${visibleCards.length}`;
+  document.getElementById('topic').textContent = card.topic;
+  document.getElementById('subtopic').textContent = card.subtopic;
+  document.getElementById('question').textContent = card.q;
+  document.getElementById('topic2').textContent = card.topic;
+  document.getElementById('subtopic2').textContent = card.subtopic;
+  document.getElementById('question2').textContent = card.q;
+  document.getElementById('answer').textContent = card.a;
+
+  document.getElementById('knownBtn').classList.toggle('active', card.known);
+  document.getElementById('knownBtn2').classList.toggle('active', card.known);
+  document.getElementById('starBtn').classList.toggle('active', card.starred);
+  document.getElementById('starBtn2').classList.toggle('active', card.starred);
+  document.getElementById('knownBtn').textContent = card.known ? 'Known ✓' : 'Known';
+  document.getElementById('knownBtn2').textContent = card.known ? 'Known ✓' : 'Known';
+  document.getElementById('starBtn').textContent = card.starred ? 'Starred ★' : 'Star';
+  document.getElementById('starBtn2').textContent = card.starred ? 'Starred ★' : 'Star';
+}
+
+function flip(){
+  if(!currentCard()) return;
+  flipped = !flipped;
+  flashcardEl.classList.toggle('flipped', flipped);
+}
+
+function nextCard(){
+  if(!visibleCards.length) return;
+  index = (index + 1) % visibleCards.length;
+  flipped = false;
+  flashcardEl.classList.remove('flipped');
+  render();
+}
+
+function prevCard(){
+  if(!visibleCards.length) return;
+  index = (index - 1 + visibleCards.length) % visibleCards.length;
+  flipped = false;
+  flashcardEl.classList.remove('flipped');
+  render();
+}
+
+function toggleKnown(){
+  const card = currentCard();
+  if(!card) return;
+  card.known = !card.known;
+  render();
+}
+
+function toggleStar(){
+  const card = currentCard();
+  if(!card) return;
+  card.starred = !card.starred;
+  render();
+}
+
+function shuffleVisible(){
+  for(let i = visibleCards.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [visibleCards[i], visibleCards[j]] = [visibleCards[j], visibleCards[i]];
+  }
+  index = 0;
+  flipped = false;
+  flashcardEl.classList.remove('flipped');
+  render();
+}
+
+document.getElementById('flipBtn').onclick = flip;
+document.getElementById('flipBackBtn').onclick = flip;
+document.getElementById('prevBtn').onclick = prevCard;
+document.getElementById('nextBtn').onclick = nextCard;
+document.getElementById('knownBtn').onclick = toggleKnown;
+document.getElementById('knownBtn2').onclick = toggleKnown;
+document.getElementById('starBtn').onclick = toggleStar;
+document.getElementById('starBtn2').onclick = toggleStar;
+document.getElementById('shuffleBtn').onclick = shuffleVisible;
+searchEl.addEventListener('input', applyFilters);
+topicFilterEl.addEventListener('change', ()=>{ populateSubtopicFilter(); applyFilters(); });
+subtopicFilterEl.addEventListener('change', applyFilters);
+viewFilterEl.addEventListener('change', applyFilters);
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') nextCard();
+  if(e.key === 'ArrowLeft') prevCard();
+  if(e.key === ' '){ e.preventDefault(); flip(); }
+});
+
+populateTopicFilter();
+populateSubtopicFilter();
+applyFilters();
+</script>
+</body>
+</html>
